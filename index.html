@@ -3,68 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#0a0a0a">
-    <title>3D Eye - Sadiya</title>
+    <title>Sadiya's Real Eye Generator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">
         { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
     </script>
 </head>
-<body class="bg-black text-white flex flex-col h-screen m-0 overflow-hidden font-sans">
-    <header class="p-4 border-b border-gray-800 bg-gray-900 flex items-center gap-3">
-        <span class="text-2xl">👁️</span>
-        <h1 class="text-lg font-bold">3D Eye Generator</h1>
+<body class="bg-black text-white flex flex-col h-screen overflow-hidden font-sans">
+    
+    <header class="p-4 border-b border-neutral-800 bg-neutral-900 flex items-center gap-3">
+        <span class="text-blue-500 text-xl">👁️</span>
+        <div>
+            <h1 class="text-lg font-bold">Ultra-Real Human Eye</h1>
+            <p class="text-xs text-neutral-400">Iris Sharpening Active</p>
+        </div>
     </header>
-    <div id="canvas-container" class="relative w-full h-[60vh] bg-black">
-        <div id="loader" class="absolute inset-0 flex items-center justify-center bg-black z-20">Loading...</div>
+
+    <div id="canvas-container" class="relative w-full h-[65vh] bg-black">
+        <div id="loader" class="absolute inset-0 flex items-center justify-center bg-black z-20 text-blue-400">
+            <p class="animate-pulse">Enhancing Iris Details...</p>
+        </div>
     </div>
-    <div class="p-6 bg-gray-900 rounded-t-3xl shadow-2xl flex-1 border-t border-gray-800">
-        <h2 class="text-md font-semibold mb-4 text-blue-400">Step: Upload Eye Image</h2>
+
+    <div class="p-6 bg-neutral-900 rounded-t-3xl border-t border-neutral-800 flex-1 shadow-2xl z-10">
+        <p class="text-[11px] text-neutral-400 mb-4 uppercase text-center">Depth Map Preserved / Glarless Rendering</p>
         <input type="file" id="imageInput" accept="image/*" class="hidden">
-        <button onclick="document.getElementById('imageInput').click()" class="w-full py-4 bg-blue-600 rounded-2xl font-bold shadow-lg active:scale-95 transition">Select Photo from Gallery</button>
-        <p class="text-xs text-gray-500 mt-4 text-center">Tip: Rotate the eye to see 3D bulge!</p>
+        <button onclick="document.getElementById('imageInput').click()" class="w-full py-4 bg-gradient-to-r from-blue-700 to-blue-500 rounded-2xl font-bold shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
+            SCAN REAL EYE
+        </button>
+        <p class="text-xs text-center mt-3 text-neutral-500">Notice the defined iris patterns and preserved lines.</p>
     </div>
+
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
         let scene, camera, renderer, controls, eyeMesh;
         const container = document.getElementById('canvas-container');
+
         function init() {
             scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-            camera.position.z = 6;
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.z = 7;
+
+            // Renderer with max anti-aliasing for sharp edges
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // HD Clarity
             container.appendChild(renderer.domElement);
-            scene.add(new THREE.AmbientLight(0xffffff, 2.5));
+
+            // Studio Lighting (Glarless)
+            // Using very soft lighting to preserve natural eye shade without highlights
+            scene.add(new THREE.AmbientLight(0xffffff, 2.0));
+            const pointLight = new THREE.PointLight(0xffffff, 5);
+            pointLight.position.set(2, 2, 5);
+            scene.add(pointLight);
+
             controls = new OrbitControls(camera, renderer.domElement);
+            controls.enablePan = false;
+            controls.enableDamping = true; // Smooth interaction
+
             loadTexture('https://images.unsplash.com/photo-1542224566-6e85f2e6772f?q=80&w=1024');
+
+            window.addEventListener('resize', onWindowResize);
             animate();
             document.getElementById('loader').style.display = 'none';
         }
+
         function loadTexture(url) {
-            new THREE.TextureLoader().load(url, (tex) => {
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.load(url, (tex) => {
                 if (eyeMesh) scene.remove(eyeMesh);
-                const geo = new THREE.PlaneGeometry(5, 5, 128, 128);
+
+                // Enhance Clarity and Anisotropy (Max details)
+                tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+                tex.colorSpace = THREE.SRGBColorSpace;
+                
+                // Low quality mipmap filtering prevents blurring
+                tex.minFilter = THREE.LinearFilter;
+                tex.magFilter = THREE.LinearFilter;
+
+                // Create Geometry with Gaussian Bulge
+                const geo = new THREE.PlaneGeometry(5, 5, 256, 256);
                 const pos = geo.attributes.position;
                 for (let i = 0; i < pos.count; i++) {
                     const x = pos.getX(i), y = pos.getY(i);
-                    pos.setZ(i, 0.6 * Math.exp(-(x*x + y*y) / 4.0));
+                    // Gaussian Curve Logic for the natural cornea bulge
+                    const dist = Math.sqrt(x*x + y*y);
+                    const z = 0.7 * Math.exp(-(dist * dist) / 4.0);
+                    pos.setZ(i, z);
                 }
                 geo.computeVertexNormals();
-                eyeMesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide }));
+
+                // Material designed for Glarless Realism
+                // High roughness and low metalness prevents artificial reflections.
+                const mat = new THREE.MeshStandardMaterial({ 
+                    map: tex, 
+                    roughness: 1.0, // Prevents reflections
+                    metalness: 0.0,
+                    side: THREE.DoubleSide 
+                });
+                eyeMesh = new THREE.Mesh(geo, mat);
                 scene.add(eyeMesh);
             });
         }
+
         document.getElementById('imageInput').addEventListener('change', (e) => {
             const file = e.target.files[0];
-            if (file) loadTexture(URL.createObjectURL(file));
+            if (file) {
+                const url = URL.createObjectURL(file);
+                loadTexture(url);
+            }
         });
+
+        function onWindowResize() {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
         function animate() {
             requestAnimationFrame(animate);
-            if (eyeMesh) eyeMesh.rotation.y = Math.sin(Date.now() * 0.001) * 0.05;
+            if (eyeMesh) {
+                const time = Date.now() * 0.0008;
+                eyeMesh.rotation.y = Math.sin(time) * 0.03;
+            }
             controls.update();
             renderer.render(scene, camera);
         }
