@@ -3,48 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Eye Viewer</title>
+    <title>3D Eye Viewer Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">
         { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
     </script>
 </head>
-<body class="m-0 overflow-hidden bg-white">
+<body class="m-0 overflow-hidden bg-white flex justify-center items-center h-screen relative">
 
     <div class="absolute top-5 left-1/2 -translate-x-1/2 z-10 flex flex-col gap-3 w-11/12 max-w-sm">
         <input type="file" id="upload" accept="image/*" class="hidden">
-        <button onclick="document.getElementById('upload').click()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg w-full uppercase">
+        <button onclick="document.getElementById('upload').click()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg w-full uppercase tracking-wider text-sm transition-transform active:scale-95">
             Upload Eye Image
         </button>
-        <button id="download" class="hidden bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg w-full uppercase">
-            Save As JPEG
+        <button id="download" class="hidden bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg w-full uppercase tracking-wider text-sm transition-transform active:scale-95">
+            Save Image (Transparent)
         </button>
     </div>
 
-    <div id="canvas-container" class="w-screen h-screen"></div>
+    <div id="canvas-container" style="width: 100%; max-width: 600px; aspect-ratio: 2.8 / 2.1;"></div>
 
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
         let scene, camera, renderer, eyeMesh, controls;
+        const container = document.getElementById('canvas-container');
 
         function init() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xffffff); // Pure white background
+            // Background null kar diya taaki transparent rahe
+            scene.background = null; 
 
-            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-            camera.position.z = 6;
+            // Aspect ratio ko container ke hisaab se (2.8/2.1) set kiya
+            const aspect = container.clientWidth / container.clientHeight;
+            camera = new THREE.PerspectiveCamera(40, aspect, 0.1, 100);
+            // Camera thoda peeche liya taaki aankh poori frame mein fit ho
+            camera.position.z = 7.5; 
 
-            renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.getElementById('canvas-container').appendChild(renderer.domElement);
-
-            // Only Ambient Light to prevent any dark shadows
-            scene.add(new THREE.AmbientLight(0xffffff, 3.0));
+            // Alpha: true se background transparent hota hai
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            // Clear color set to 0 (fully transparent)
+            renderer.setClearColor(0x000000, 0); 
+            container.appendChild(renderer.domElement);
 
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enablePan = false;
+            // Zoom in-out ko limit kiya taaki ratio kharab na ho
+            controls.minDistance = 4;
+            controls.maxDistance = 10;
 
             animate();
         }
@@ -53,33 +61,30 @@
             const file = e.target.files[0];
             if (!file) return;
 
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const textureLoader = new THREE.TextureLoader();
-                // Load the exact image without adding any black dots
-                textureLoader.load(event.target.result, (tex) => {
-                    tex.colorSpace = THREE.SRGBColorSpace;
-                    createMesh(tex);
-                    document.getElementById('download').classList.remove('hidden');
-                });
-            };
-            reader.readAsDataURL(file);
+            const url = URL.createObjectURL(file);
+            const textureLoader = new THREE.TextureLoader();
+            
+            textureLoader.load(url, (tex) => {
+                tex.colorSpace = THREE.SRGBColorSpace;
+                createMesh(tex);
+                document.getElementById('download').classList.remove('hidden');
+            });
         });
 
         function createMesh(tex) {
             if (eyeMesh) scene.remove(eyeMesh);
 
-            const geo = new THREE.PlaneGeometry(3.0, 2.2, 128, 128);
+            // Plane ki size 2.8 aur 2.1 set ki
+            const geo = new THREE.PlaneGeometry(2.8, 2.1, 128, 128);
             const pos = geo.attributes.position;
             
             for (let i = 0; i < pos.count; i++) {
                 const x = pos.getX(i), y = pos.getY(i);
-                // 3D bulge shape
                 pos.setZ(i, 0.8 * Math.exp(-(x*x + y*y) / 3.0));
             }
             geo.computeVertexNormals();
 
-            // MeshBasicMaterial creates ZERO shadows. It just shows your image perfectly.
+            // MeshBasicMaterial (No shadow, pure image)
             const mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
             eyeMesh = new THREE.Mesh(geo, mat);
             scene.add(eyeMesh);
@@ -87,23 +92,27 @@
 
         document.getElementById('download').addEventListener('click', () => {
             renderer.render(scene, camera);
+            
             const link = document.createElement('a');
-            link.download = '3D_Eye.jpg';
-            link.href = renderer.domElement.toDataURL("image/jpeg", 1.0);
+            link.download = '3D_Eye_Transparent.png';
+            // PNG format hi transparency support karta hai
+            link.href = renderer.domElement.toDataURL("image/png", 1.0);
             link.click();
         });
 
         function animate() {
             requestAnimationFrame(animate);
-            if (eyeMesh) eyeMesh.rotation.y = Math.sin(Date.now() * 0.001) * 0.05; // Auto rotate
+            if (eyeMesh) eyeMesh.rotation.y = Math.sin(Date.now() * 0.001) * 0.05; 
             controls.update();
             renderer.render(scene, camera);
         }
 
         window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
+            if (!container.clientWidth) return;
+            const aspect = container.clientWidth / container.clientHeight;
+            camera.aspect = aspect;
             camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setSize(container.clientWidth, container.clientHeight);
         });
 
         init();
