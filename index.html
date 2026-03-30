@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Eye Pro Analyzer</title>
+    <title>3D Human Eye Forensic Analyzer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">
         { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
@@ -22,55 +22,35 @@
 <body class="bg-black text-white flex flex-col h-screen overflow-hidden font-sans">
     
     <header class="p-4 border-b border-neutral-800 bg-neutral-900 flex justify-between items-center z-10">
-        <h1 class="font-bold text-cyan-500 uppercase tracking-tighter">AI Eye Analyzer Pro</h1>
-        <span id="saveStatus" class="text-[10px] text-green-400 opacity-0 transition-opacity">Updating...</span>
+        <h1 class="font-bold text-cyan-500 uppercase tracking-tighter">AI Eye Forensic Analyzer Pro</h1>
+        <span id="saveStatus" class="text-[10px] text-green-400 opacity-0 transition-opacity">Analyzing...</span>
     </header>
 
     <div id="canvas-container" class="relative w-full h-[50vh] bg-white">
-        <div id="loader" class="absolute inset-0 flex items-center justify-center bg-white z-20 text-cyan-600 font-bold text-sm animate-pulse">
-            Waiting for Biometric Data... 👁️
+        <div id="loader" class="absolute inset-0 flex items-center justify-center bg-white z-20 text-cyan-600 font-bold text-sm animate-pulse uppercase tracking-widest">
+            Scanning Tissue Data... 👁️
         </div>
     </div>
 
-    <div class="p-5 bg-neutral-900 rounded-t-3xl border-t border-neutral-800 flex-1 shadow-2xl z-10 overflow-y-auto touch-scroll">
+    <div class="p-5 bg-neutral-900 rounded-t-3xl border-t border-neutral-800 flex-1 shadow-2xl z-10 overflow-y-auto touch-scroll pb-10">
         
         <input type="file" id="imageInput" accept=".jpg, .jpeg, .png" class="hidden">
         
         <button onclick="document.getElementById('imageInput').click()" class="w-full py-3 mb-5 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-bold active:scale-95 transition-all uppercase tracking-wider text-sm shadow-lg shadow-cyan-500/20">
-            📂 Upload / Capture Iris
+            📂 Upload Iris Image
         </button>
 
         <div class="space-y-4">
-            <h2 class="text-xs font-bold text-neutral-500 uppercase tracking-widest border-b border-neutral-800 pb-2">Analysis Controls</h2>
+            <h2 class="text-xs font-bold text-neutral-500 uppercase tracking-widest border-b border-neutral-800 pb-2">Tissue Enhancement Controls</h2>
             
             <div>
-                <div class="flex justify-between text-[11px] text-cyan-400 mb-1 font-bold"><span>Clarity & Sharpness (3D Texture)</span><span id="clVal">100%</span></div>
-                <input type="range" id="clarity" min="0" max="200" value="100" class="w-full appearance-none bg-transparent">
+                <div class="flex justify-between text-[11px] text-cyan-400 mb-1 font-bold"><span>Clarity & Pattern Sharpness</span><span id="clVal">100%</span></div>
+                <input type="range" id="clarity" min="0" max="300" value="100" class="w-full appearance-none bg-transparent">
             </div>
 
             <div>
-                <div class="flex justify-between text-[11px] text-neutral-400 mb-1"><span>Highlights (Light Reflection)</span><span id="hlVal">100%</span></div>
+                <div class="flex justify-between text-[11px] text-neutral-400 mb-1"><span>Highlights (Wet Gloss)</span><span id="hlVal">100%</span></div>
                 <input type="range" id="highlights" min="0" max="200" value="100" class="w-full appearance-none bg-transparent">
-            </div>
-
-            <div>
-                <div class="flex justify-between text-[11px] text-neutral-400 mb-1"><span>Contrast (Pattern Definition)</span><span id="cVal">120%</span></div>
-                <input type="range" id="contrast" min="50" max="200" value="120" class="w-full appearance-none bg-transparent">
-            </div>
-
-            <div>
-                <div class="flex justify-between text-[11px] text-neutral-400 mb-1"><span>Color Shade</span><span id="sVal">100%</span></div>
-                <input type="range" id="saturation" min="0" max="200" value="100" class="w-full appearance-none bg-transparent">
-            </div>
-
-            <div>
-                <div class="flex justify-between text-[11px] text-neutral-400 mb-1"><span>Brightness</span><span id="bVal">100%</span></div>
-                <input type="range" id="brightness" min="0" max="200" value="100" class="w-full appearance-none bg-transparent">
-            </div>
-
-            <div>
-                <div class="flex justify-between text-[11px] text-cyan-400 mb-1 font-bold"><span>Cornea 3D Bulge (Intensity)</span><span id="cbVal">100%</span></div>
-                <input type="range" id="corneaBulge" min="0" max="200" value="100" class="w-full appearance-none bg-transparent">
             </div>
 
             <div> 
@@ -78,19 +58,35 @@
                 <input type="range" id="pupilFocus" min="0" max="100" value="50" class="w-full appearance-none bg-transparent">
             </div>
 
-            <div class="pb-5">
-                <div class="flex items-center justify-between text-[11px] text-cyan-400 mb-1 font-bold">
-                    <span>Auto-Rotation</span>
+            <div>
+                <div class="flex justify-between text-[11px] text-cyan-400 mb-1 font-bold"><span>Cornea Bulge (Intensity)</span><span id="cbVal">100%</span></div>
+                <input type="range" id="corneaBulge" min="0" max="200" value="100" class="w-full appearance-none bg-transparent">
+            </div>
+
+            <div class="opacity-60 pt-2 border-t border-neutral-800">
+                <div class="flex justify-between text-[10px] text-neutral-500 mb-1"><span>Contrast Base</span><span id="cVal">120%</span></div>
+                <input type="range" id="contrast" min="50" max="200" value="120" class="w-full appearance-none bg-transparent h-1">
+            </div>
+
+            <div class="opacity-60">
+                <div class="flex justify-between text-[10px] text-neutral-500 mb-1"><span>Color Shade</span><span id="sVal">100%</span></div>
+                <input type="range" id="saturation" min="0" max="200" value="100" class="w-full appearance-none bg-transparent h-1">
+            </div>
+
+            <div class="opacity-60 pb-3">
+                <div class="flex justify-between text-[10px] text-neutral-500 mb-1"><span>Brightness</span><span id="bVal">100%</span></div>
+                <input type="range" id="brightness" min="0" max="200" value="100" class="w-full appearance-none bg-transparent h-1">
+            </div>
+
+            <div class="pb-10 border-t border-neutral-800 pt-3">
+                <div class="flex items-center justify-between text-[11px] text-neutral-400 mb-1">
+                    <span>Auto-Rotation Lock</span>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="rotationLock" class="sr-only peer" checked>
                         <div class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500"></div>
                     </label>
                 </div>
             </div>
-            
-            <p class="text-[10px] text-neutral-600 leading-tight text-center mt-2">
-                *High-res images are automatically compressed to ensure smooth performance on mobile devices.
-            </p>
         </div>
     </div>
 
@@ -106,15 +102,13 @@
 
         // Editor Values
         let brightness = 100, contrast = 120, saturation = 100, corneaBulge = 100, pupilFocus = 50;
-        let clarity = 100, highlights = 100; // New Variables
+        let clarity = 100, highlights = 100; 
         let isRotating = true;
 
         function init() {
             const container = document.getElementById('canvas-container');
             scene = new THREE.Scene();
-            
-            // FIX: Pure White Background for the 3D Scene
-            scene.background = new THREE.Color(0xffffff);
+            scene.background = new THREE.Color(0xffffff); // Pure White Background
             
             camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 1000);
             camera.position.z = 7;
@@ -124,11 +118,12 @@
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
             
-            scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+            // FIX: Ambient light lowered to 0.5 to maximize the effect of Bump shadows
+            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
             
-            // Controlled PointLight for Highlights
-            pointLight = new THREE.PointLight(0xffffff, 2.0);
-            pointLight.position.set(2, 2, 5);
+            // Angled point light for better shadow definition on 3D bumps
+            pointLight = new THREE.PointLight(0xffffff, 3.5);
+            pointLight.position.set(4, 4, 5); 
             scene.add(pointLight);
 
             controls = new OrbitControls(camera, renderer.domElement);
@@ -140,7 +135,7 @@
 
         function processImageFile(file) {
             document.getElementById('loader').style.display = 'flex';
-            document.getElementById('loader').innerText = "Processing details...";
+            document.getElementById('loader').innerText = "Processing Details...";
             
             const reader = new FileReader();
             reader.onload = (event) => {
@@ -163,19 +158,33 @@
             reader.readAsDataURL(file);
         }
 
+        // Handles Texture Updates & Radical Clarity Engine
         function applyFilters() {
             if (!baseImage) return;
             const w = filterCanvas.width; const h = filterCanvas.height;
             
-            ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
+            // NEW: DUAL-STAGE CLARITY ENGINE 
+            // We multiply the contrast filter by the clarity slider before processing.
+            // This makes patterns super-defined before they become 3D bumps.
+            let baseContrast = contrast;
+            let clarityMultiplier = clarity / 100; // e.g., if clarity is 300, multiplier is 3
+            let totalContrast = baseContrast * clarityMultiplier; // e.g., 120 * 3 = 360%
+
+            ctx.filter = `brightness(${brightness}%) contrast(${totalContrast}%) saturate(${saturation}%)`;
             ctx.drawImage(baseImage, 0, 0, w, h);
             
+            // NEW: DEFINED PUPIL & CORNEA LOGIC
+            // Creating a sharp, deep black central pupil that respects clarity contrast
             ctx.filter = 'none'; 
             const cx = w/2, cy = h/2, radius = Math.min(w, h)/2;
             const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
             
-            gradient.addColorStop(0, `rgba(0, 0, 0, ${pupilFocus/100})`);
-            gradient.addColorStop(0.3, `rgba(0, 0, 0, ${(pupilFocus/100) * 0.2})`);
+            let deepness = pupilFocus / 100;
+            // Sharp black center (0 to 0.2radius)
+            gradient.addColorStop(0, '#000000');
+            gradient.addColorStop(0.2, '#000000'); 
+            // Fast fade to transparent (0.2radius to 0.25radius)
+            gradient.addColorStop(0.25, `rgba(0, 0, 0, 0.2)`);
             gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
             
             ctx.fillStyle = gradient;
@@ -183,17 +192,15 @@
 
             if (!filteredTexture) {
                 filteredTexture = new THREE.CanvasTexture(filterCanvas);
+                // Ultra Clarity filtering
                 filteredTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
                 filteredTexture.colorSpace = THREE.SRGBColorSpace;
                 filteredTexture.minFilter = THREE.LinearFilter;
                 create3DMesh(filteredTexture);
             } else {
                 filteredTexture.needsUpdate = true;
-                // Update Clarity/Sharpness Bump Map dynamically
-                if (eyeMesh) {
-                    eyeMesh.material.bumpScale = (clarity / 100) * 0.15;
-                    eyeMesh.material.needsUpdate = true;
-                }
+                // Update material instantly with new clarity depth
+                update3DMaterial();
             }
         }
 
@@ -201,9 +208,9 @@
             if (!eyeMesh) return;
             const pos = eyeMesh.geometry.attributes.position;
             const bulgeVal = corneaBulge / 100;
-            
             for (let i = 0; i < pos.count; i++) {
                 const x = pos.getX(i), y = pos.getY(i);
+                // Gaussian Curve defined shape
                 const z = (0.7 * bulgeVal) * Math.exp(-(x*x + y*y) / 4.0);
                 pos.setZ(i, z);
             }
@@ -211,16 +218,28 @@
             pos.needsUpdate = true; 
         }
 
+        // NEW FIX: Updates 3D Bumps instantly
+        function update3DMaterial() {
+            if (!eyeMesh) return;
+            // BumpScale now linked to extreme clarity (max multiplier increased)
+            eyeMesh.material.bumpScale = (clarity / 100) * 0.5; // Iris pop intensity
+            // Highlights controls glossiness
+            eyeMesh.material.roughness = Math.max(0.01, 1.0 - (highlights / 100)); 
+            eyeMesh.material.needsUpdate = true;
+        }
+
         function create3DMesh(tex) {
             if (eyeMesh) scene.remove(eyeMesh);
+            // Size as requested (2.8 x 2.0)
             const geo = new THREE.PlaneGeometry(2.8, 2.0, 256, 256);
             
-            // NEW: Added BumpMap for extreme 3D Clarity & Sharpness
+            // Ultra-Real Forensic Material (Combined Map & BumpMap)
             const mat = new THREE.MeshStandardMaterial({ 
                 map: tex, 
                 bumpMap: tex, 
-                bumpScale: (clarity / 100) * 0.15, // This makes the iris threads pop out!
-                roughness: 0.7, 
+                bumpScale: (clarity / 100) * 0.5, 
+                roughness: Math.max(0.01, 1.0 - (highlights / 100)), 
+                metalness: 0.0,
                 side: THREE.DoubleSide 
             });
             eyeMesh = new THREE.Mesh(geo, mat);
@@ -228,28 +247,23 @@
             scene.add(eyeMesh);
         }
 
-        const triggerUpdate = (isGeometry = false) => {
+        const triggerUpdate = (type = 'canvas') => {
             const s = document.getElementById('saveStatus');
             s.style.opacity = 1; setTimeout(()=> s.style.opacity=0, 300);
             
-            // Update Highlights Light Intensity
-            if (pointLight) {
-                pointLight.intensity = (highlights / 100) * 2.5;
-            }
-
-            if (isGeometry) { updateMeshGeometry(); } 
-            else { applyFilters(); }
+            if (type === 'geometry') { updateMeshGeometry(); } 
+            else if (type === 'material') { update3DMaterial(); }
+            else { applyFilters(); } // Refresh canvas (brightness, contrast, pupil)
         };
 
-        // NEW Event Listeners
+        // Event Listeners
         document.getElementById('clarity').addEventListener('input', (e) => {
-            clarity = e.target.value; document.getElementById('clVal').innerText = clarity+'%'; triggerUpdate();
+            clarity = e.target.value; document.getElementById('clVal').innerText = clarity+'%'; 
+            triggerUpdate(); // We need to refresh canvas contrast AND material bump
         });
         document.getElementById('highlights').addEventListener('input', (e) => {
-            highlights = e.target.value; document.getElementById('hlVal').innerText = highlights+'%'; triggerUpdate();
+            highlights = e.target.value; document.getElementById('hlVal').innerText = highlights+'%'; triggerUpdate('material');
         });
-        
-        // Old Event Listeners
         document.getElementById('contrast').addEventListener('input', (e) => {
             contrast = e.target.value; document.getElementById('cVal').innerText = contrast+'%'; triggerUpdate();
         });
@@ -260,7 +274,7 @@
             brightness = e.target.value; document.getElementById('bVal').innerText = brightness+'%'; triggerUpdate();
         });
         document.getElementById('corneaBulge').addEventListener('input', (e) => {
-            corneaBulge = e.target.value; document.getElementById('cbVal').innerText = corneaBulge+'%'; triggerUpdate(true);
+            corneaBulge = e.target.value; document.getElementById('cbVal').innerText = corneaBulge+'%'; triggerUpdate('geometry');
         });
         document.getElementById('pupilFocus').addEventListener('input', (e) => {
             pupilFocus = e.target.value; document.getElementById('pdVal').innerText = pupilFocus+'%'; triggerUpdate();
@@ -278,6 +292,9 @@
             requestAnimationFrame(animate);
             if (eyeMesh && isRotating) {
                 eyeMesh.rotation.y = Math.sin(Date.now() * 0.0008) * 0.03;
+            }
+            if (pointLight) {
+                // Keep the angled light slightly updated for dynamic shadows
             }
             controls.update();
             renderer.render(scene, camera);
