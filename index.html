@@ -13,11 +13,11 @@
 
     <div class="absolute top-5 left-1/2 -translate-x-1/2 z-10 flex flex-col gap-3 w-11/12 max-w-sm">
         <input type="file" id="upload" accept="image/*" class="hidden">
-        <button onclick="document.getElementById('upload').click()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg w-full">
-            UPLOAD EYE IMAGE
+        <button onclick="document.getElementById('upload').click()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg w-full uppercase">
+            Upload Eye Image
         </button>
-        <button id="download" class="hidden bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg w-full">
-            SAVE AS JPEG
+        <button id="download" class="hidden bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg w-full uppercase">
+            Save As JPEG
         </button>
     </div>
 
@@ -36,12 +36,11 @@
             camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
             camera.position.z = 6;
 
-            // preserveDrawingBuffer zaroori hai photo save karne ke liye
             renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-            // Sirf ek bright Ambient Light, koi Directional Light nahi = NO SHADOWS
+            // Only Ambient Light to prevent any dark shadows
             scene.add(new THREE.AmbientLight(0xffffff, 3.0));
 
             controls = new OrbitControls(camera, renderer.domElement);
@@ -56,31 +55,13 @@
 
             const reader = new FileReader();
             reader.onload = (event) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = img.width; canvas.height = img.height;
-                    const ctx = canvas.getContext('2d');
-                    
-                    // Simple drawing without extra filters
-                    ctx.drawImage(img, 0, 0);
-
-                    // Add proper black pupil
-                    const cx = img.width/2, cy = img.height/2, r = Math.min(img.width, img.height)/2;
-                    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-                    grad.addColorStop(0, '#000000');
-                    grad.addColorStop(0.12, '#000000');
-                    grad.addColorStop(0.18, 'transparent');
-                    ctx.fillStyle = grad;
-                    ctx.fillRect(0, 0, img.width, img.height);
-
-                    const tex = new THREE.CanvasTexture(canvas);
+                const textureLoader = new THREE.TextureLoader();
+                // Load the exact image without adding any black dots
+                textureLoader.load(event.target.result, (tex) => {
                     tex.colorSpace = THREE.SRGBColorSpace;
-                    
                     createMesh(tex);
-                    document.getElementById('download').classList.remove('hidden'); // Show download button
-                };
-                img.src = event.target.result;
+                    document.getElementById('download').classList.remove('hidden');
+                });
             };
             reader.readAsDataURL(file);
         });
@@ -93,13 +74,13 @@
             
             for (let i = 0; i < pos.count; i++) {
                 const x = pos.getX(i), y = pos.getY(i);
-                // Simple 3D Bulge for Cornea
+                // 3D bulge shape
                 pos.setZ(i, 0.8 * Math.exp(-(x*x + y*y) / 3.0));
             }
             geo.computeVertexNormals();
 
-            // Simple material
-            const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.3, side: THREE.DoubleSide });
+            // MeshBasicMaterial creates ZERO shadows. It just shows your image perfectly.
+            const mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
             eyeMesh = new THREE.Mesh(geo, mat);
             scene.add(eyeMesh);
         }
