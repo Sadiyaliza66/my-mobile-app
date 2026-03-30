@@ -32,9 +32,10 @@
     </div>
 
     <div class="p-5 bg-neutral-900 rounded-t-3xl border-t border-neutral-800 flex-1 shadow-2xl z-10 overflow-y-auto">
-        <input type="file" id="imageInput" accept="image/*" capture="environment" class="hidden">
+        
+        <input type="file" id="imageInput" accept="image/*" class="hidden">
         <button onclick="document.getElementById('imageInput').click()" class="w-full py-3 mb-5 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-bold active:scale-95 transition-all uppercase tracking-wider text-sm shadow-lg shadow-cyan-500/20">
-            📸 Capture Human Eye
+            📂 Upload / Capture Eye
         </button>
 
         <div class="space-y-4">
@@ -56,7 +57,7 @@
             </div>
             
             <p class="text-[10px] text-neutral-600 leading-tight text-center mt-2">
-                *High-res images are automatically compressed to prevent camera timeout.
+                *Images are automatically compressed to ensure smooth 3D rendering.
             </p>
         </div>
     </div>
@@ -66,12 +67,11 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
         let scene, camera, renderer, controls, eyeMesh;
-        let baseImage = null; // Stores compressed image
+        let baseImage = null; 
         const filterCanvas = document.createElement('canvas');
         const ctx = filterCanvas.getContext('2d', { willReadFrequently: true });
         let filteredTexture = null;
 
-        // Editor Values
         let brightness = 100, contrast = 120, saturation = 100, pupilFocus = 50;
 
         function init() {
@@ -94,16 +94,15 @@
             animate();
         }
 
-        // Auto-Compressor to stop Timeout Error
+        // Auto-Compressor keeps the app from crashing on heavy gallery uploads
         function processImageFile(file) {
             document.getElementById('loader').style.display = 'flex';
-            document.getElementById('loader').innerText = "Compressing Data...";
+            document.getElementById('loader').innerText = "Processing Image...";
             
             const reader = new FileReader();
             reader.onload = (event) => {
                 const img = new Image();
                 img.onload = () => {
-                    // Compress to max 1024x1024 to save RAM
                     const maxSize = 1024;
                     let w = img.width, h = img.height;
                     if (w > maxSize || h > maxSize) {
@@ -114,37 +113,31 @@
                     baseImage = img;
                     
                     document.getElementById('loader').style.display = 'none';
-                    applyFilters(); // Apply settings instantly
+                    applyFilters(); 
                 };
                 img.src = event.target.result;
             };
             reader.readAsDataURL(file);
         }
 
-        // The Canva Engine + Pupil Enhancer
         function applyFilters() {
             if (!baseImage) return;
             const w = filterCanvas.width; const h = filterCanvas.height;
             
-            // 1. Apply Canva Filters (Contrast, Saturation, Brightness)
             ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
             ctx.drawImage(baseImage, 0, 0, w, h);
             
-            // 2. Cornea & Pupil Magic Enhancer
-            ctx.filter = 'none'; // Reset filter for drawing
+            ctx.filter = 'none'; 
             const cx = w/2, cy = h/2, radius = Math.min(w, h)/2;
             
             const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-            // Deepen the center (Pupil)
             gradient.addColorStop(0, `rgba(0, 0, 0, ${pupilFocus/100})`);
-            // Add a slight clear curve to the iris
             gradient.addColorStop(0.3, `rgba(0, 0, 0, ${(pupilFocus/100) * 0.2})`);
             gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
             
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, w, h);
 
-            // 3. Send to 3D Engine
             if (!filteredTexture) {
                 filteredTexture = new THREE.CanvasTexture(filterCanvas);
                 filteredTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -152,7 +145,7 @@
                 filteredTexture.minFilter = THREE.LinearFilter;
                 create3DMesh(filteredTexture);
             } else {
-                filteredTexture.needsUpdate = true; // BUG FIX: Ye line sliders ko zinda karti hai!
+                filteredTexture.needsUpdate = true; 
             }
         }
 
@@ -162,7 +155,7 @@
             const pos = geo.attributes.position;
             for (let i = 0; i < pos.count; i++) {
                 const x = pos.getX(i), y = pos.getY(i);
-                pos.setZ(i, 0.7 * Math.exp(-(x*x + y*y) / 4.0)); // Natural curve
+                pos.setZ(i, 0.7 * Math.exp(-(x*x + y*y) / 4.0)); 
             }
             geo.computeVertexNormals();
             const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 1.0, side: THREE.DoubleSide });
@@ -181,7 +174,6 @@
             img.src = 'https://images.unsplash.com/photo-1542224566-6e85f2e6772f?q=80&w=1024';
         }
 
-        // Sliders Logic
         const triggerUpdate = () => {
             const s = document.getElementById('saveStatus');
             s.style.opacity = 1; setTimeout(()=> s.style.opacity=0, 300);
