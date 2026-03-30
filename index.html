@@ -6,125 +6,68 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#0a0a0a">
-    <title>3D Eye Generator - Sadiya</title>
-    
+    <title>3D Eye - Sadiya</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
-        }
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
     </script>
-    <style>
-        body { background: #0a0a0a; color: white; margin: 0; overflow: hidden; }
-        #canvas-container { width: 100%; height: 60vh; background: #000; position: relative; }
-    </style>
 </head>
-<body class="bg-neutral-950 text-neutral-100 font-sans flex flex-col h-screen">
-
-    <header class="border-b border-neutral-800 bg-neutral-900/50 p-4">
-        <div class="max-w-7xl mx-auto flex items-center gap-3">
-            <div class="p-2 bg-blue-500/20 rounded-lg text-blue-400">👁️</div>
-            <div>
-                <h1 class="text-xl font-bold tracking-tight text-white">Realistic 3D Eye Generator</h1>
-                <p class="text-xs text-neutral-400">Sadiya's College Project</p>
-            </div>
-        </div>
+<body class="bg-black text-white flex flex-col h-screen m-0 overflow-hidden font-sans">
+    <header class="p-4 border-b border-gray-800 bg-gray-900 flex items-center gap-3">
+        <span class="text-2xl">👁️</span>
+        <h1 class="text-lg font-bold">3D Eye Generator</h1>
     </header>
-
-    <div id="canvas-container">
-        <div id="loader" class="absolute inset-0 flex items-center justify-center bg-black z-20">
-            <p class="animate-pulse text-blue-400">Loading 3D Eye...</p>
-        </div>
+    <div id="canvas-container" class="relative w-full h-[60vh] bg-black">
+        <div id="loader" class="absolute inset-0 flex items-center justify-center bg-black z-20">Loading...</div>
     </div>
-
-    <div class="flex-1 p-4 overflow-y-auto">
-        <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-xl">
-            <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">📤 Upload Eye Image</h2>
-            <input type="file" id="imageInput" accept="image/*" class="hidden">
-            <button onclick="document.getElementById('imageInput').click()" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-xl transition-colors">
-                Select Photo
-            </button>
-            <p class="text-xs text-neutral-400 mt-4">Tip: Drag the eye to see the realistic cornea bulge!</p>
-        </div>
+    <div class="p-6 bg-gray-900 rounded-t-3xl shadow-2xl flex-1 border-t border-gray-800">
+        <h2 class="text-md font-semibold mb-4 text-blue-400">Step: Upload Eye Image</h2>
+        <input type="file" id="imageInput" accept="image/*" class="hidden">
+        <button onclick="document.getElementById('imageInput').click()" class="w-full py-4 bg-blue-600 rounded-2xl font-bold shadow-lg active:scale-95 transition">Select Photo from Gallery</button>
+        <p class="text-xs text-gray-500 mt-4 text-center">Tip: Rotate the eye to see 3D bulge!</p>
     </div>
-
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-
         let scene, camera, renderer, controls, eyeMesh;
         const container = document.getElementById('canvas-container');
-
         function init() {
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
             camera.position.z = 6;
-
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
             container.appendChild(renderer.domElement);
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 2.5);
-            scene.add(ambientLight);
-
+            scene.add(new THREE.AmbientLight(0xffffff, 2.5));
             controls = new OrbitControls(camera, renderer.domElement);
-            controls.enablePan = false;
-
-            // Default image loading
             loadTexture('https://images.unsplash.com/photo-1542224566-6e85f2e6772f?q=80&w=1024');
-
-            window.addEventListener('resize', onWindowResize);
             animate();
             document.getElementById('loader').style.display = 'none';
         }
-
         function loadTexture(url) {
-            new THREE.TextureLoader().load(url, (texture) => {
+            new THREE.TextureLoader().load(url, (tex) => {
                 if (eyeMesh) scene.remove(eyeMesh);
-                // Create Gaussian Curve Geometry
-                const geometry = new THREE.PlaneGeometry(5, 5, 128, 128);
-                const pos = geometry.attributes.position;
+                const geo = new THREE.PlaneGeometry(5, 5, 128, 128);
+                const pos = geo.attributes.position;
                 for (let i = 0; i < pos.count; i++) {
-                    const x = pos.getX(i);
-                    const y = pos.getY(i);
-                    const z = 0.6 * Math.exp(-(x * x + y * y) / 4.0);
-                    pos.setZ(i, z);
+                    const x = pos.getX(i), y = pos.getY(i);
+                    pos.setZ(i, 0.6 * Math.exp(-(x*x + y*y) / 4.0));
                 }
-                geometry.computeVertexNormals();
-                const material = new THREE.MeshStandardMaterial({ map: texture, side: THREE.DoubleSide });
-                eyeMesh = new THREE.Mesh(geometry, material);
+                geo.computeVertexNormals();
+                eyeMesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide }));
                 scene.add(eyeMesh);
             });
         }
-
         document.getElementById('imageInput').addEventListener('change', (e) => {
             const file = e.target.files[0];
-            if (file) {
-                const url = URL.createObjectURL(file);
-                loadTexture(url);
-            }
+            if (file) loadTexture(URL.createObjectURL(file));
         });
-
-        function onWindowResize() {
-            camera.aspect = container.clientWidth / container.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
-        }
-
         function animate() {
             requestAnimationFrame(animate);
-            if (eyeMesh) {
-                const time = Date.now() * 0.001;
-                eyeMesh.rotation.y = Math.sin(time * 0.5) * 0.05;
-            }
+            if (eyeMesh) eyeMesh.rotation.y = Math.sin(Date.now() * 0.001) * 0.05;
             controls.update();
             renderer.render(scene, camera);
         }
-
         init();
     </script>
 </body>
