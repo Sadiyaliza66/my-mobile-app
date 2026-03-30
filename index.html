@@ -100,7 +100,6 @@
         const ctx = filterCanvas.getContext('2d', { willReadFrequently: true });
         let filteredTexture = null;
 
-        // Editor Values
         let brightness = 100, contrast = 120, saturation = 100, corneaBulge = 100, pupilFocus = 50;
         let clarity = 100, highlights = 100; 
         let isRotating = true;
@@ -108,7 +107,7 @@
         function init() {
             const container = document.getElementById('canvas-container');
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xffffff); // Pure White Background
+            scene.background = new THREE.Color(0xffffff); 
             
             camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 1000);
             camera.position.z = 7;
@@ -118,12 +117,12 @@
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
             
-            // FIX: Ambient light lowered to 0.5 to maximize the effect of Bump shadows
-            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+            // FIX 1: Bright even lighting everywhere. No dark shadows!
+            scene.add(new THREE.AmbientLight(0xffffff, 2.5)); 
             
-            // Angled point light for better shadow definition on 3D bumps
-            pointLight = new THREE.PointLight(0xffffff, 3.5);
-            pointLight.position.set(4, 4, 5); 
+            // FIX 2: Light is now exactly front-centered, just for the glossy reflection
+            pointLight = new THREE.PointLight(0xffffff, 1.5);
+            pointLight.position.set(0, 0, 5); 
             scene.add(pointLight);
 
             controls = new OrbitControls(camera, renderer.domElement);
@@ -158,32 +157,24 @@
             reader.readAsDataURL(file);
         }
 
-        // Handles Texture Updates & Radical Clarity Engine
         function applyFilters() {
             if (!baseImage) return;
             const w = filterCanvas.width; const h = filterCanvas.height;
             
-            // NEW: DUAL-STAGE CLARITY ENGINE 
-            // We multiply the contrast filter by the clarity slider before processing.
-            // This makes patterns super-defined before they become 3D bumps.
             let baseContrast = contrast;
-            let clarityMultiplier = clarity / 100; // e.g., if clarity is 300, multiplier is 3
-            let totalContrast = baseContrast * clarityMultiplier; // e.g., 120 * 3 = 360%
+            let clarityMultiplier = clarity / 100; 
+            let totalContrast = baseContrast * clarityMultiplier; 
 
             ctx.filter = `brightness(${brightness}%) contrast(${totalContrast}%) saturate(${saturation}%)`;
             ctx.drawImage(baseImage, 0, 0, w, h);
             
-            // NEW: DEFINED PUPIL & CORNEA LOGIC
-            // Creating a sharp, deep black central pupil that respects clarity contrast
             ctx.filter = 'none'; 
             const cx = w/2, cy = h/2, radius = Math.min(w, h)/2;
             const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
             
             let deepness = pupilFocus / 100;
-            // Sharp black center (0 to 0.2radius)
             gradient.addColorStop(0, '#000000');
             gradient.addColorStop(0.2, '#000000'); 
-            // Fast fade to transparent (0.2radius to 0.25radius)
             gradient.addColorStop(0.25, `rgba(0, 0, 0, 0.2)`);
             gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
             
@@ -192,14 +183,12 @@
 
             if (!filteredTexture) {
                 filteredTexture = new THREE.CanvasTexture(filterCanvas);
-                // Ultra Clarity filtering
                 filteredTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
                 filteredTexture.colorSpace = THREE.SRGBColorSpace;
                 filteredTexture.minFilter = THREE.LinearFilter;
                 create3DMesh(filteredTexture);
             } else {
                 filteredTexture.needsUpdate = true;
-                // Update material instantly with new clarity depth
                 update3DMaterial();
             }
         }
@@ -210,7 +199,6 @@
             const bulgeVal = corneaBulge / 100;
             for (let i = 0; i < pos.count; i++) {
                 const x = pos.getX(i), y = pos.getY(i);
-                // Gaussian Curve defined shape
                 const z = (0.7 * bulgeVal) * Math.exp(-(x*x + y*y) / 4.0);
                 pos.setZ(i, z);
             }
@@ -218,26 +206,22 @@
             pos.needsUpdate = true; 
         }
 
-        // NEW FIX: Updates 3D Bumps instantly
         function update3DMaterial() {
             if (!eyeMesh) return;
-            // BumpScale now linked to extreme clarity (max multiplier increased)
-            eyeMesh.material.bumpScale = (clarity / 100) * 0.5; // Iris pop intensity
-            // Highlights controls glossiness
+            // FIX 3: Controlled the bump scale so it doesn't create black artifacts
+            eyeMesh.material.bumpScale = (clarity / 100) * 0.15; 
             eyeMesh.material.roughness = Math.max(0.01, 1.0 - (highlights / 100)); 
             eyeMesh.material.needsUpdate = true;
         }
 
         function create3DMesh(tex) {
             if (eyeMesh) scene.remove(eyeMesh);
-            // Size as requested (2.8 x 2.0)
             const geo = new THREE.PlaneGeometry(2.8, 2.0, 256, 256);
             
-            // Ultra-Real Forensic Material (Combined Map & BumpMap)
             const mat = new THREE.MeshStandardMaterial({ 
                 map: tex, 
                 bumpMap: tex, 
-                bumpScale: (clarity / 100) * 0.5, 
+                bumpScale: (clarity / 100) * 0.15, 
                 roughness: Math.max(0.01, 1.0 - (highlights / 100)), 
                 metalness: 0.0,
                 side: THREE.DoubleSide 
@@ -253,13 +237,12 @@
             
             if (type === 'geometry') { updateMeshGeometry(); } 
             else if (type === 'material') { update3DMaterial(); }
-            else { applyFilters(); } // Refresh canvas (brightness, contrast, pupil)
+            else { applyFilters(); } 
         };
 
-        // Event Listeners
         document.getElementById('clarity').addEventListener('input', (e) => {
             clarity = e.target.value; document.getElementById('clVal').innerText = clarity+'%'; 
-            triggerUpdate(); // We need to refresh canvas contrast AND material bump
+            triggerUpdate(); 
         });
         document.getElementById('highlights').addEventListener('input', (e) => {
             highlights = e.target.value; document.getElementById('hlVal').innerText = highlights+'%'; triggerUpdate('material');
@@ -292,9 +275,6 @@
             requestAnimationFrame(animate);
             if (eyeMesh && isRotating) {
                 eyeMesh.rotation.y = Math.sin(Date.now() * 0.0008) * 0.03;
-            }
-            if (pointLight) {
-                // Keep the angled light slightly updated for dynamic shadows
             }
             controls.update();
             renderer.render(scene, camera);
