@@ -3,154 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Human Eye Forensic Analyzer Pro - Viewer Mode</title>
+    <title>Sadiya's 3D Eye Generator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">
         { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
     </script>
-    <style>
-        body { height: 100vh; overflow: hidden; margin: 0; padding: 0; }
-        #canvas-container { height: 100vh; width: 100vw; position: absolute; top: 0; left: 0; z-index: 1; }
-        #loader { z-index: 2; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: black; }
-        /* Minimal title to show forensic context, but non-intrusive and non-clickable */
-        #forensic-title { position: absolute; top: 20px; left: 20px; z-index: 3; pointer-events: none; }
-    </style>
 </head>
-<body class="bg-black text-white font-sans">
+<body class="bg-black text-white flex flex-col h-screen overflow-hidden font-sans">
     
-    <div id="forensic-title" class="bg-neutral-900/50 p-3 rounded-xl border border-neutral-800">
-        <h1 class="text-sm font-bold text-neutral-300 flex items-center gap-2 uppercase tracking-tighter"><span class="text-blue-500">👁️</span> Forensic Tissue Analyzer Pro</h1>
-        <p class="text-[10px] text-neutral-500">Glareless 3D Visualization Active</p>
+    <header class="p-4 border-b border-neutral-800 bg-neutral-900 flex items-center justify-between z-10">
+        <h1 class="font-bold text-cyan-500 uppercase tracking-widest text-sm">3D Eye Generator Pro</h1>
+        <span class="text-[10px] text-neutral-500">Auto-Sharpening ON</span>
+    </header>
+
+    <div id="canvas-container" class="relative w-full flex-1 bg-white">
+        <div id="loader" class="absolute inset-0 flex items-center justify-center bg-white z-20 text-cyan-600 font-bold text-sm uppercase tracking-widest" style="display: none;">
+            Generating 3D Eye... 👁️
+        </div>
+        <div id="startMsg" class="absolute inset-0 flex items-center justify-center bg-white z-10 text-neutral-400 font-bold text-sm uppercase">
+            Upload an image to start
+        </div>
     </div>
 
-    <div id="loader">
-        <p class="text-blue-400 animate-pulse text-sm uppercase tracking-widest font-bold">Enhancing Iris Tissue Details... 👁️</p>
-    </div>
+    <div class="p-6 bg-neutral-900 rounded-t-3xl border-t border-neutral-800 shadow-2xl z-10">
+        
+        <input type="file" id="imageInput" accept=".jpg, .jpeg, .png" class="hidden">
+        
+        <div class="flex flex-col gap-3">
+            <button onclick="document.getElementById('imageInput').click()" class="w-full py-4 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold active:scale-95 transition-all uppercase tracking-wider text-sm shadow-lg shadow-cyan-500/20">
+                📂 Upload Iris Image
+            </button>
 
-    <div id="canvas-container"></div>
+            <button id="downloadBtn" style="display: none;" class="w-full py-4 bg-transparent border-2 border-green-500 text-green-500 hover:bg-green-500 hover:text-white rounded-xl font-bold active:scale-95 transition-all uppercase tracking-wider text-sm">
+                📸 Download as JPEG
+            </button>
+        </div>
+        
+    </div>
 
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
         let scene, camera, renderer, controls, eyeMesh;
-        let brightness = 100, contrast = 120, saturation = 100, corneaBulge = 100, pupilFocus = 50;
-        let clarity = 100, highlights = 100; // These were deleted from UI, but kept in logic for forensic accuracy
-
+        const container = document.getElementById('canvas-container');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const startMsg = document.getElementById('startMsg');
+        
         const filterCanvas = document.createElement('canvas');
         const ctx = filterCanvas.getContext('2d', { willReadFrequently: true });
-        let filteredTexture = null;
 
         function init() {
-            const container = document.getElementById('canvas-container');
             scene = new THREE.Scene();
-            
-            // FIX: Scene background now pure forensic white for clarity, but UI body is black
-            scene.background = new THREE.Color(0xffffff);
+            scene.background = new THREE.Color(0xffffff); // White Background
             
             camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 1000);
             camera.position.z = 7;
-            
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+
+            // FIX: preserveDrawingBuffer must be true to allow JPEG download from WebGL
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
             container.appendChild(renderer.domElement);
-            
-            // Bright forensic ambient light - no artifacts
-            scene.add(new THREE.AmbientLight(0xffffff, 2.5)); 
-            
-            // Static forensic point light centered
+
+            // Bright, even lighting so there are no black shadows
+            scene.add(new THREE.AmbientLight(0xffffff, 2.5));
             const pointLight = new THREE.PointLight(0xffffff, 1.2);
-            pointLight.position.set(0, 0, 5); 
+            pointLight.position.set(0, 0, 5);
             scene.add(pointLight);
 
             controls = new OrbitControls(camera, renderer.domElement);
-            controls.enablePan = false; controls.enableDamping = true;
-
-            // Load original high-res eye image automatically (image 2)
-            loadTexture('https://images.unsplash.com/photo-1542224566-6e85f2e6772f?q=80&w=1024');
+            controls.enablePan = false;
+            controls.enableDamping = true; 
 
             window.addEventListener('resize', onWindowResize);
             animate();
-            document.getElementById('loader').style.display = 'none';
         }
 
-        // Auto-Compressor & Clarity bypass setup
-        function loadTexture(url) {
-            const textureLoader = new THREE.TextureLoader();
-            textureLoader.load(url, (tex) => {
-                const img = tex.image;
-                const maxSize = 1024;
-                let w = img.width, h = img.height;
-                if (w > maxSize || h > maxSize) {
-                    const ratio = Math.min(maxSize / w, maxSize / h);
-                    w *= ratio; h *= ratio;
-                }
-                filterCanvas.width = w; filterCanvas.height = h;
-                tex.dispose(); // original not needed
+        function processImageFile(file) {
+            document.getElementById('loader').style.display = 'flex';
+            startMsg.style.display = 'none';
+            
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const maxSize = 1024;
+                    let w = img.width, h = img.height;
+                    if (w > maxSize || h > maxSize) {
+                        const ratio = Math.min(maxSize / w, maxSize / h);
+                        w *= ratio; h *= ratio;
+                    }
+                    filterCanvas.width = w; filterCanvas.height = h;
+                    
+                    // Auto-Enhancement Logic (Bypass UI sliders, do it automatically)
+                    ctx.filter = `brightness(100%) contrast(150%) saturate(100%)`; // Auto-sharpness
+                    ctx.drawImage(img, 0, 0, w, h);
+                    
+                    // Auto-Pupil (Perfect black center)
+                    ctx.filter = 'none'; 
+                    const cx = w/2, cy = h/2, radius = Math.min(w, h)/2;
+                    const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+                    gradient.addColorStop(0, '#000000');
+                    gradient.addColorStop(0.1, '#000000'); 
+                    gradient.addColorStop(0.15, `rgba(0, 0, 0, 0.4)`);
+                    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, w, h);
 
-                // Setting internal image for canvas use
-                tex.image = img;
-                
-                // Set forensic default levels for Pop pattern Pop Pops binary marked Pop binary popped marked precise marked Pops Pops pattern details forensic Pop popped accurate precise popping binary popped precise detail markings पॉप marked Pop patterns markers pop patterns binary popped accurate marksPop patterns detailed markings pops details popped binary Pop Pop forensic popped binary marks pop pattern markings pop pops precise precise popping detail patterns detail markings पॉप pops accuracy popped marked precise refer Pop precision pops precise reference popped marked popped detailed.
-                applyFilters(img); 
-            });
-        }
-
-        function applyFilters(img) {
-            const w = filterCanvas.width; const h = filterCanvas.height;
-            
-            // Setting surgical reference Pop pops accuracy Pops precision reference Pops precise precise markings pops detailed patterns pops detail marking Pops pops detailed surgical analysis precise forensic markingprecise pops detailed patterns detail marks detail marked popped Pops pattern marked Pops accurate Pop patterns detailed marks Pop patterns analysis forensic popping popped precision Pop precise popping detailed accuracy precise patterns popped precise detailed reference popped precise Pop detailed accurate precisely popping detailed accuracy Pop patterns precision marks detail popped accurate Pop reference precise detailed markers pop pattern marks Pops precise referencePop precision Pops detailed marks Pop accurate Pop patterns details binary popped detailed marked binary Pop popping Pop binary popped marks detailed precise markers analysis Pops accuracy Pop patterns marks precision marking Pops precision Pop patterns Pop accuracy Pop detailed Pops patterns precisionPop precise marking precisely popping detail markers details popped patterns precise popping detailed accurate reference marking precision popping detailed marking Pops popped reference pops precision popped marks accuracyPop patterns precision marked Pop detailed marked precise reference precise marked accuracy marks accuracy patterns accuracy popping detailed precise marked pops patterns accuracy Pop marked Pop popped forensic reference pops marks Pops detail marked Pops accuracy precise marks precisionPop pops detailed marking precise markings popped precise detailed patterns accuracy popped precise reference detail markers analyze Pops pops precision detail markings pops details patterns analysis précise popped detail markings precision marked accuracy patterns accuracy Pop markings accuracy pops precise markings analysis precis detailed forensic markings popped precise Pop popped precise patterns Pop patterns accuracy popping Pop binary popped detailed marks popped precise markers analyse accuracy pops detailed reference detailed patterns Pop patterns precise markings pop pattern detail markings pops detailed reference detail reference Pop pops detail reference analysis detailed patterns analysis précis popped detail reference pops accurate précis detailed markers analyze precision marking precisely pops accurate precise details analysis précise detail markings precision analysis precise marked Pops pattern details binary Popped detailed Pop precise marked precise references Pops precision precise markings Pops binary popping detailed markings.
-            
-            ctx.filter = `brightness(100%) contrast(120%) saturate(100%)`; // default forensic settings
-            ctx.drawImage(img, 0, 0, w, h);
-            
-            // Static defined Pupil & Cornea - bilkul reference visual forensic Pop popping binary popped marked Precise markings precision precise Pop detailed reference पॉप popped forensic marks popping popped detailed precise markers accuracy precise Pop patterns Pop pops accurate precise marking précision Popped marks accuracy pattern marking accuracy precision Popped marks precision Pop details referencePop surgical pops detailed marking analysis popped precise marking precisely pops accurate precise details precise marked Popped markers Pop forensic Pops pattern marks details popping detail marking pops details popped marked Pops binary reference marks detail marking forensic markers precision popped reference popped accurate reference Pops patterns binary popped accuracy precision references accurate popped reference markers pop patterns detailed marked Pop patterns accuracy precisión popped Pop patterns detailed popping Pop binary popped detailed Pop binary popped detailed markers accuracy popped binary accuracy forensic popped detailed Pop popped detailed marked Popped detail marking popped accuracy precision reference Pops reference Pop popped accurate precision popped detailed markings popped accurate patterns accurate popped markings analyze accuracy precision marked Pop reference markings detail Pop patterns forensic reference detailed Pop patterns detailed marked précise markings.
-            ctx.filter = 'none'; 
-            const cx = w/2, cy = h/2, radius = Math.min(w, h)/2;
-            const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-            
-            gradient.addColorStop(0, '#000000');
-            gradient.addColorStop(0.1, '#000000'); //urgical center
-            gradient.addColorStop(0.15, `rgba(0, 0, 0, 0.4)`); // surgical border marks detail marks Pops precise marksPop precision marked detailed references Pop accuracy detailed pattern marks accuracy popped accuracy patternsPop accuracy pattern markings Pops precision detailed marking popped précise marked precise reference Pop pops detailed surgical popping accurate popped patterns detailed reference markers Pop popped accuracy popped patterns reference Pop accuracy markings pops patterns accurate reference markingsPop accurate Pops markings details pops precise reference details pops marks Pop precision Pops precision marks detailed marks popped accurate patterns accuracy.
-            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, w, h);
-
-            if (!filteredTexture) {
-                filteredTexture = new THREE.CanvasTexture(filterCanvas);
-                // Ultra Forensic Resolution set to max anisotropy - zero artifacts
-                filteredTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-                filteredTexture.colorSpace = THREE.SRGBColorSpace;
-                filteredTexture.minFilter = THREE.LinearFilter;
-                create3DMesh(filteredTexture);
-            }
+                    create3DMesh(new THREE.CanvasTexture(filterCanvas));
+                    document.getElementById('loader').style.display = 'none';
+                    downloadBtn.style.display = 'block'; // Show download button
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
         }
 
         function create3DMesh(tex) {
             if (eyeMesh) scene.remove(eyeMesh);
-            const geo = new THREE.PlaneGeometry(2.8, 2.0, 256, 256);
             
+            tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            tex.colorSpace = THREE.SRGBColorSpace;
+            tex.minFilter = THREE.LinearFilter;
+
+            const geo = new THREE.PlaneGeometry(2.8, 2.0, 256, 256);
             const pos = geo.attributes.position;
-            const bulgeScale = 0.7; // forensic curvature bypass setting pop popped forensic reference pops marks Pops detail marked Pops accuracy precise marks precisionPop pops detailed marking Pop popped detailed surgical popping accurate patterns precise markings पॉप popped marked precis Pop pattern detailed reference popped.
+            
             for (let i = 0; i < pos.count; i++) {
                 const x = pos.getX(i), y = pos.getY(i);
-                // Gaussian Curve adjusted shape defined patterns detailed reference popped reference accuracy pops precision patterns accuracy.
-                const z = (bulgeScale) * Math.exp(-(x*x + y*y) / 4.0);
+                // Auto 3D Bulge
+                const z = 0.7 * Math.exp(-(x*x + y*y) / 4.0);
                 pos.setZ(i, z);
             }
             geo.computeVertexNormals();
 
-            // Forensic Tissue Material setup - Roughness 1, Glareless
             const mat = new THREE.MeshStandardMaterial({ 
                 map: tex, 
-                roughness: 1.0, 
+                bumpMap: tex,
+                bumpScale: 0.1, // Auto Pop-out
+                roughness: 0.2, // Auto Glossy
                 side: THREE.DoubleSide 
             });
+            
             eyeMesh = new THREE.Mesh(geo, mat);
             scene.add(eyeMesh);
         }
+
+        // Image Upload Event
+        document.getElementById('imageInput').addEventListener('change', (e) => {
+            if (e.target.files[0]) processImageFile(e.target.files[0]);
+        });
+
+        // Download JPEG Event
+        downloadBtn.addEventListener('click', () => {
+            renderer.render(scene, camera); // Ensure scene is fully painted
+            const dataURL = renderer.domElement.toDataURL("image/jpeg", 1.0);
+            const link = document.createElement('a');
+            link.download = 'Sadiya_3D_Eye_' + Date.now() + '.jpg';
+            link.href = dataURL;
+            link.click();
+        });
 
         function onWindowResize() {
             camera.aspect = container.clientWidth / container.clientHeight;
@@ -161,13 +174,12 @@
         function animate() {
             requestAnimationFrame(animate);
             if (eyeMesh) {
-                const time = Date.now() * 0.0008;
-                // Forensic Auto-Rotation logic
-                eyeMesh.rotation.y = Math.sin(time) * 0.03;
+                eyeMesh.rotation.y = Math.sin(Date.now() * 0.0008) * 0.03;
             }
             controls.update();
             renderer.render(scene, camera);
         }
+        
         init();
     </script>
 </body>
