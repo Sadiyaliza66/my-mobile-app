@@ -1,0 +1,9 @@
+{
+  "name": "Realistic 3D Eye Generator",
+  "description": "Upload a 2D image of an eye and instantly view it as a realistic, curved 3D eyeball. Perfect for college AR/VR projects.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
