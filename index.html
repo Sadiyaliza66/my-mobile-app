@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Eye Forensic Analyzer Pro</title>
+    <title>3D Human Eye Forensic Analyzer Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">
         { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
@@ -37,7 +37,7 @@
         <input type="file" id="imageInput" accept=".jpg, .jpeg, .png" class="hidden">
         
         <button onclick="document.getElementById('imageInput').click()" class="w-full py-3 mb-5 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-bold active:scale-95 transition-all uppercase tracking-wider text-sm shadow-lg shadow-cyan-500/20">
-            📂 Upload / Capture Iris
+            📂 Upload Iris Image
         </button>
 
         <div class="space-y-4">
@@ -118,16 +118,16 @@
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
             
-            // FIX: Ambient light lowered to 0.8 to maximize the effect of Bump shadows
-            scene.add(new THREE.AmbientLight(0xffffff, 2.0));
+            // Bright Ambient to fill shadows, without causing black artifacts
+            scene.add(new THREE.AmbientLight(0xffffff, 2.5)); 
             
-            // Front-centered light for general viewing (Low to prevent artifacts)
-            frontLight = new THREE.PointLight(0xffffff, 1.0);
+            // New Lighting Strategy for Hyper Realism
+            frontLight = new THREE.PointLight(0xffffff, 1.2);
             frontLight.position.set(0, 0, 5); 
             scene.add(frontLight);
 
-            // Forensic Detail Light slightly from side for defining tissue textures
-            forensicDetailLight = new THREE.DirectionalLight(0xffffff, 0.6); // controlled dynamically
+            // Soft directional light slightly from side for defining tissue textures
+            forensicDetailLight = new THREE.DirectionalLight(0xffffff, 1.0);
             forensicDetailLight.position.set(-3, 3, 5);
             forensicDetailLight.target.position.set(0, 0, 0);
             scene.add(forensicDetailLight);
@@ -170,25 +170,27 @@
             if (!baseImage) return;
             const w = filterCanvas.width; const h = filterCanvas.height;
             
-            // SURGICAL CLARITY (0 to 100%)
+            // NEW: DUAL-STAGE SURGICAL CLARITY
+            // We multiply the global contrast with the clarity slider. 
+            // This makes the tissue details surgically defined.
             let baseContrast = contrast;
             let clarityScale = clarity / 100; // 0 to 1
-            let finalContrast = baseContrast + (baseContrast * 0.5 * clarityScale); // subtle forensic sharpening
+            let totalContrast = baseContrast * clarityScale; 
 
-            ctx.filter = `brightness(${brightness}%) contrast(${finalContrast}%) saturate(${saturation}%)`;
+            ctx.filter = `brightness(${brightness}%) contrast(${totalContrast}%) saturate(${saturation}%)`;
             ctx.drawImage(baseImage, 0, 0, w, h);
             
-            // NEW No-Dot Pupil Definition - Sharp Black Central Focus, no binary glare dots
+            // NEW Pupil Definition - Sharp Black Central Focus, no binary glare dots
             ctx.filter = 'none'; 
             const cx = w/2, cy = h/2, radius = Math.min(w, h)/2;
             const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
             
-            let surgicalSymmetry = pupilFocus / 100;
+            let deepness = pupilFocus / 100;
             // Central surgical black (0 to 0.1radius)
             gradient.addColorStop(0, '#000000');
             gradient.addColorStop(0.1, '#000000'); 
             // Surgical defined border (0.1radius to 0.15radius)
-            gradient.addColorStop(0.15, `rgba(0, 0, 0, 0.4)`);
+            gradient.addColorStop(0.15, `rgba(0, 0, 0, 0.2)`);
             gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
             
             ctx.fillStyle = gradient;
@@ -225,8 +227,7 @@
         function update3DMaterial() {
             if (!eyeMesh) return;
             // Clarity now controls the height of the 3D veins/threads
-            // We use subtle surgical pop (max 0.1) instead of exaggerated depth.
-            eyeMesh.material.bumpScale = (clarity / 100) * 0.1; // Forensic Texture Pop
+            eyeMesh.material.bumpScale = (clarity / 100) * 0.1; // Iris pop intensity
             
             // Highlights controls how glossy and wet the eye looks
             eyeMesh.material.roughness = Math.max(0.01, 1.0 - (highlights / 100)); 
@@ -258,7 +259,7 @@
             
             if (type === 'geometry') { updateMeshGeometry(); } 
             else if (type === 'material') { update3DMaterial(); }
-            else { applyFilters(); } // Refresh canvas (brightness, contrast, pupil)
+            else { applyFilters(); } 
         };
 
         // Event Listeners
