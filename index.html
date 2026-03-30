@@ -2,177 +2,129 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Eye Forensic Analyzer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Eye Viewer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">
         { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
     </script>
-    <style>
-        body { margin: 0; overflow: hidden; background-color: #f3f4f6; }
-        canvas { display: block; }
-        .glass-ui {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(0, 0, 0, 0.1);
-        }
-    </style>
 </head>
-<body class="font-sans h-screen w-screen relative bg-white">
-    
-    <div id="canvas-container" class="absolute inset-0 z-0"></div>
+<body class="m-0 overflow-hidden bg-white">
 
-    <div id="ui-layer" class="absolute inset-x-0 bottom-10 z-20 flex flex-col items-center gap-4 px-6 pointer-events-none">
-        
-        <div class="glass-ui p-6 rounded-[2rem] shadow-2xl w-full max-w-sm pointer-events-auto text-center">
-            <h1 class="text-gray-800 font-bold text-lg mb-4 uppercase tracking-tighter flex items-center justify-center gap-2">
-                <span class="text-cyan-600 text-xl">👁️</span> Eye Forensic Pro
-            </h1>
-
-            <input type="file" id="imageInput" accept=".jpg, .jpeg, .png" class="hidden">
-            
-            <div class="flex flex-col gap-3">
-                <button onclick="document.getElementById('imageInput').click()" class="w-full py-4 bg-cyan-600 hover:bg-cyan-500 text-white rounded-2xl font-bold shadow-lg active:scale-95 transition-all uppercase text-sm">
-                    📂 Upload Iris Image
-                </button>
-
-                <button id="downloadBtn" style="display: none;" class="w-full py-4 bg-white border-2 border-green-500 text-green-600 rounded-2xl font-bold active:scale-95 transition-all uppercase text-sm">
-                    📸 Save 3D Scan
-                </button>
-            </div>
-            
-            <p id="statusMsg" class="text-[10px] text-gray-400 mt-4 uppercase tracking-widest">Waiting for data input...</p>
-        </div>
+    <div class="absolute top-5 left-1/2 -translate-x-1/2 z-10 flex flex-col gap-3 w-11/12 max-w-sm">
+        <input type="file" id="upload" accept="image/*" class="hidden">
+        <button onclick="document.getElementById('upload').click()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg w-full">
+            UPLOAD EYE IMAGE
+        </button>
+        <button id="download" class="hidden bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg w-full">
+            SAVE AS JPEG
+        </button>
     </div>
+
+    <div id="canvas-container" class="w-screen h-screen"></div>
 
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        let scene, camera, renderer, controls, eyeMesh;
-        const container = document.getElementById('canvas-container');
-        const statusMsg = document.getElementById('statusMsg');
-        const downloadBtn = document.getElementById('downloadBtn');
-
-        const filterCanvas = document.createElement('canvas');
-        const ctx = filterCanvas.getContext('2d', { willReadFrequently: true });
+        let scene, camera, renderer, eyeMesh, controls;
 
         function init() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xffffff); // Clean White
-            
-            camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.z = 7;
-            
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+            scene.background = new THREE.Color(0xffffff); // Pure white background
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.z = 6;
+
+            // preserveDrawingBuffer zaroori hai photo save karne ke liye
+            renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            container.appendChild(renderer.domElement);
-            
-            // Full Bright Lighting (No Shadows)
-            scene.add(new THREE.AmbientLight(0xffffff, 2.5)); 
-            const frontLight = new THREE.PointLight(0xffffff, 1.0);
-            frontLight.position.set(0, 0, 5); 
-            scene.add(frontLight);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // Sirf ek bright Ambient Light, koi Directional Light nahi = NO SHADOWS
+            scene.add(new THREE.AmbientLight(0xffffff, 3.0));
 
             controls = new OrbitControls(camera, renderer.domElement);
-            controls.enablePan = false; controls.enableDamping = true;
+            controls.enablePan = false;
 
-            window.addEventListener('resize', onWindowResize);
             animate();
         }
 
-        function processImageFile(file) {
-            statusMsg.innerText = "Enhancing Iris Patterns...";
-            
+        document.getElementById('upload').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
             const reader = new FileReader();
             reader.onload = (event) => {
                 const img = new Image();
                 img.onload = () => {
-                    const maxSize = 1024;
-                    let w = img.width, h = img.height;
-                    if (w > maxSize || h > maxSize) {
-                        const ratio = Math.min(maxSize / w, maxSize / h);
-                        w *= ratio; h *= ratio;
-                    }
-                    filterCanvas.width = w; filterCanvas.height = h;
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width; canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
                     
-                    // AUTO ENHANCE (Canva Level Clarity)
-                    ctx.filter = `brightness(100%) contrast(150%) saturate(100%)`;
-                    ctx.drawImage(img, 0, 0, w, h);
-                    
-                    // AUTO PUPIL (Perfect Deep Center)
-                    const cx = w/2, cy = h/2, radius = Math.min(w, h)/2;
-                    const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-                    gradient.addColorStop(0, '#000000');
-                    gradient.addColorStop(0.1, '#000000'); 
-                    gradient.addColorStop(0.15, `rgba(0,0,0,0.4)`);
-                    gradient.addColorStop(1, 'rgba(0,0,0,0)');
-                    ctx.fillStyle = gradient;
-                    ctx.fillRect(0, 0, w, h);
+                    // Simple drawing without extra filters
+                    ctx.drawImage(img, 0, 0);
 
-                    const tex = new THREE.CanvasTexture(filterCanvas);
-                    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+                    // Add proper black pupil
+                    const cx = img.width/2, cy = img.height/2, r = Math.min(img.width, img.height)/2;
+                    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+                    grad.addColorStop(0, '#000000');
+                    grad.addColorStop(0.12, '#000000');
+                    grad.addColorStop(0.18, 'transparent');
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(0, 0, img.width, img.height);
+
+                    const tex = new THREE.CanvasTexture(canvas);
                     tex.colorSpace = THREE.SRGBColorSpace;
                     
-                    create3DMesh(tex);
-                    
-                    statusMsg.innerText = "3D Scan Complete";
-                    downloadBtn.style.display = 'block';
+                    createMesh(tex);
+                    document.getElementById('download').classList.remove('hidden'); // Show download button
                 };
                 img.src = event.target.result;
             };
             reader.readAsDataURL(file);
-        }
+        });
 
-        function create3DMesh(tex) {
+        function createMesh(tex) {
             if (eyeMesh) scene.remove(eyeMesh);
-            const geo = new THREE.PlaneGeometry(2.8, 2.0, 256, 256);
+
+            const geo = new THREE.PlaneGeometry(3.0, 2.2, 128, 128);
             const pos = geo.attributes.position;
             
             for (let i = 0; i < pos.count; i++) {
                 const x = pos.getX(i), y = pos.getY(i);
-                // Real Cornea Bulge
-                const z = 0.7 * Math.exp(-(x*x + y*y) / 4.0);
-                pos.setZ(i, z);
+                // Simple 3D Bulge for Cornea
+                pos.setZ(i, 0.8 * Math.exp(-(x*x + y*y) / 3.0));
             }
             geo.computeVertexNormals();
 
-            const mat = new THREE.MeshStandardMaterial({ 
-                map: tex, 
-                bumpMap: tex, 
-                bumpScale: 0.1, // Surgical Texture Pop
-                roughness: 0.2, // Wet Look
-                side: THREE.DoubleSide 
-            });
+            // Simple material
+            const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.3, side: THREE.DoubleSide });
             eyeMesh = new THREE.Mesh(geo, mat);
             scene.add(eyeMesh);
         }
 
-        document.getElementById('imageInput').addEventListener('change', (e) => {
-            if (e.target.files[0]) processImageFile(e.target.files[0]);
-        });
-
-        downloadBtn.addEventListener('click', () => {
+        document.getElementById('download').addEventListener('click', () => {
             renderer.render(scene, camera);
             const link = document.createElement('a');
-            link.download = 'Forensic_Eye_Scan.jpg';
+            link.download = '3D_Eye.jpg';
             link.href = renderer.domElement.toDataURL("image/jpeg", 1.0);
             link.click();
         });
 
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
         function animate() {
             requestAnimationFrame(animate);
-            if (eyeMesh) eyeMesh.rotation.y = Math.sin(Date.now() * 0.0008) * 0.03;
+            if (eyeMesh) eyeMesh.rotation.y = Math.sin(Date.now() * 0.001) * 0.05; // Auto rotate
             controls.update();
             renderer.render(scene, camera);
         }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
         init();
     </script>
 </body>
