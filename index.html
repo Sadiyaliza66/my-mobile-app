@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Human Eye Pro Editor</title>
+    <title>3D Eye Pro Analyzer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">
         { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
     </script>
     <style>
+        /* FIX: Enable smooth mobile touch scrolling */
+        .touch-scroll { -webkit-overflow-scrolling: touch; }
+        
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none; height: 18px; width: 18px;
             border-radius: 50%; background: #06b6d4; cursor: pointer; margin-top: -6px;
@@ -21,34 +24,34 @@
 <body class="bg-black text-white flex flex-col h-screen overflow-hidden font-sans">
     
     <header class="p-4 border-b border-neutral-800 bg-neutral-900 flex justify-between items-center z-10">
-        <h1 class="font-bold text-cyan-500">PRO EYE EDITOR</h1>
-        <span id="saveStatus" class="text-[10px] text-green-400 opacity-0 transition-opacity">Updating...</span>
+        <h1 class="font-bold text-cyan-500 uppercase tracking-tighter">AI Eye Analyzer Pro</h1>
+        <span id="saveStatus" class="text-[10px] text-green-400 opacity-0 transition-opacity">Analyzing...</span>
     </header>
 
     <div id="canvas-container" class="relative w-full h-[50vh] bg-black">
-        <div id="loader" class="absolute inset-0 flex items-center justify-center bg-black z-20 text-cyan-400 text-sm font-bold tracking-widest uppercase">
-            Waiting for Upload... 👁️
+        <div id="loader" class="absolute inset-0 flex items-center justify-center bg-black z-20 text-cyan-400 text-sm animate-pulse">
+            Waiting for Biometric Data... 👁️
         </div>
     </div>
 
-    <div class="p-5 bg-neutral-900 rounded-t-3xl border-t border-neutral-800 flex-1 shadow-2xl z-10 overflow-y-auto">
+    <div class="p-5 bg-neutral-900 rounded-t-3xl border-t border-neutral-800 flex-1 shadow-2xl z-10 overflow-y-auto touch-scroll">
         
         <input type="file" id="imageInput" accept=".jpg, .jpeg, .png" class="hidden">
         
         <button onclick="document.getElementById('imageInput').click()" class="w-full py-3 mb-5 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-bold active:scale-95 transition-all uppercase tracking-wider text-sm shadow-lg shadow-cyan-500/20">
-            📂 Upload From Gallery
+            📂 Upload / Capture Iris
         </button>
 
         <div class="space-y-4">
-            <h2 class="text-xs font-bold text-neutral-500 uppercase tracking-widest border-b border-neutral-800 pb-2">Enhancement Controls</h2>
+            <h2 class="text-xs font-bold text-neutral-500 uppercase tracking-widest border-b border-neutral-800 pb-2">Analysis Controls</h2>
             
             <div>
-                <div class="flex justify-between text-[11px] text-neutral-400 mb-1"><span>Contrast (Iris Details)</span><span id="cVal">120%</span></div>
+                <div class="flex justify-between text-[11px] text-neutral-400 mb-1"><span>Contrast (Pattern Definition)</span><span id="cVal">120%</span></div>
                 <input type="range" id="contrast" min="50" max="200" value="120" class="w-full appearance-none bg-transparent">
             </div>
 
             <div>
-                <div class="flex justify-between text-[11px] text-neutral-400 mb-1"><span>Color Depth</span><span id="sVal">100%</span></div>
+                <div class="flex justify-between text-[11px] text-neutral-400 mb-1"><span>Color Shade</span><span id="sVal">100%</span></div>
                 <input type="range" id="saturation" min="0" max="200" value="100" class="w-full appearance-none bg-transparent">
             </div>
 
@@ -58,9 +61,17 @@
             </div>
 
             <div>
-                <div class="flex justify-between text-[11px] text-cyan-400 mb-1 font-bold"><span>Pupil & Cornea Focus</span><span id="pVal">50%</span></div>
+                <div class="flex justify-between text-[11px] text-cyan-400 mb-1 font-bold"><span>Cornea 3D Bulge (Intensity)</span><span id="cbVal">100%</span></div>
+                <input type="range" id="corneaBulge" min="0" max="200" value="100" class="w-full appearance-none bg-transparent">
+            </div>
+
+            <div class="pb-5"> <div class="flex justify-between text-[11px] text-cyan-400 mb-1 font-bold"><span>Pupil Definition (Deepness)</span><span id="pdVal">50%</span></div>
                 <input type="range" id="pupilFocus" min="0" max="100" value="50" class="w-full appearance-none bg-transparent">
             </div>
+            
+            <p class="text-[10px] text-neutral-600 leading-tight text-center mt-2">
+                *High-res images are automatically compressed to ensure smooth performance on mobile devices.
+            </p>
         </div>
     </div>
 
@@ -74,7 +85,8 @@
         const ctx = filterCanvas.getContext('2d', { willReadFrequently: true });
         let filteredTexture = null;
 
-        let brightness = 100, contrast = 120, saturation = 100, pupilFocus = 50;
+        // Editor Values
+        let brightness = 100, contrast = 120, saturation = 100, corneaBulge = 100, pupilFocus = 50;
 
         function init() {
             const container = document.getElementById('canvas-container');
@@ -91,19 +103,21 @@
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enablePan = false; controls.enableDamping = true;
 
-            // NO DEFAULT LANDSCAPE IMAGE ANYMORE!
+            document.getElementById('loader').style.display = 'none';
+            // Waiting for user upload
             animate();
         }
 
+        // Auto-Compressor to prevent browser timeout on heavy gallery uploads
         function processImageFile(file) {
             document.getElementById('loader').style.display = 'flex';
-            document.getElementById('loader').innerText = "Processing Details...";
+            document.getElementById('loader').innerText = "Processing details...";
             
             const reader = new FileReader();
             reader.onload = (event) => {
                 const img = new Image();
                 img.onload = () => {
-                    const maxSize = 1024;
+                    const maxSize = 1024; // Compress to max 1024x1024 to save RAM
                     let w = img.width, h = img.height;
                     if (w > maxSize || h > maxSize) {
                         const ratio = Math.min(maxSize / w, maxSize / h);
@@ -111,12 +125,6 @@
                     }
                     filterCanvas.width = w; filterCanvas.height = h;
                     baseImage = img;
-                    
-                    // BUG FIX: Completely destroy old texture memory to prevent overlap!
-                    if (filteredTexture) {
-                        filteredTexture.dispose();
-                        filteredTexture = null;
-                    }
                     
                     document.getElementById('loader').style.display = 'none';
                     applyFilters(); 
@@ -126,20 +134,20 @@
             reader.readAsDataURL(file);
         }
 
+        // Handles Texture Updates (Brightness, Contrast, Saturation, Pupil Focus)
         function applyFilters() {
             if (!baseImage) return;
             const w = filterCanvas.width; const h = filterCanvas.height;
             
-            // Clear canvas before drawing
-            ctx.clearRect(0, 0, w, h);
-            
+            // 1. Canva Filters
             ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
             ctx.drawImage(baseImage, 0, 0, w, h);
             
+            // 2. Pupil Deepening Logic
             ctx.filter = 'none'; 
             const cx = w/2, cy = h/2, radius = Math.min(w, h)/2;
-            
             const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+            
             gradient.addColorStop(0, `rgba(0, 0, 0, ${pupilFocus/100})`);
             gradient.addColorStop(0.3, `rgba(0, 0, 0, ${(pupilFocus/100) * 0.2})`);
             gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -147,7 +155,6 @@
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, w, h);
 
-            // Recreate texture if it was destroyed or doesn't exist
             if (!filteredTexture) {
                 filteredTexture = new THREE.CanvasTexture(filterCanvas);
                 filteredTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -155,28 +162,44 @@
                 filteredTexture.minFilter = THREE.LinearFilter;
                 create3DMesh(filteredTexture);
             } else {
-                filteredTexture.needsUpdate = true; // For real-time slider updates
+                filteredTexture.needsUpdate = true; // Slider logic zinda karein
             }
+        }
+
+        // Handles Geometry Updates (Cornea 3D Bulge)
+        function updateMeshGeometry() {
+            if (!eyeMesh) return;
+            const pos = eyeMesh.geometry.attributes.position;
+            const bulgeVal = corneaBulge / 100;
+            
+            for (let i = 0; i < pos.count; i++) {
+                const x = pos.getX(i), y = pos.getY(i);
+                // Gaussian Curve adjusted by Cornea Bulge slider
+                const z = (0.7 * bulgeVal) * Math.exp(-(x*x + y*y) / 4.0);
+                pos.setZ(i, z);
+            }
+            eyeMesh.geometry.computeVertexNormals();
+            pos.needsUpdate = true; // BUG FIX: Ye line sliders ko zinda karti hai!
         }
 
         function create3DMesh(tex) {
             if (eyeMesh) scene.remove(eyeMesh);
             const geo = new THREE.PlaneGeometry(5, 5, 256, 256);
-            const pos = geo.attributes.position;
-            for (let i = 0; i < pos.count; i++) {
-                const x = pos.getX(i), y = pos.getY(i);
-                pos.setZ(i, 0.7 * Math.exp(-(x*x + y*y) / 4.0)); 
-            }
-            geo.computeVertexNormals();
+            
+            // Material rough (Roughness: 1.0) prevent artificial reflection
             const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 1.0, side: THREE.DoubleSide });
             eyeMesh = new THREE.Mesh(geo, mat);
+            updateMeshGeometry(); // Apply initial geometry
             scene.add(eyeMesh);
         }
 
-        const triggerUpdate = () => {
+        // Sliders Logic
+        const triggerUpdate = (isGeometry = false) => {
             const s = document.getElementById('saveStatus');
             s.style.opacity = 1; setTimeout(()=> s.style.opacity=0, 300);
-            applyFilters();
+            
+            if (isGeometry) { updateMeshGeometry(); } 
+            else { applyFilters(); }
         };
 
         document.getElementById('contrast').addEventListener('input', (e) => {
@@ -188,8 +211,11 @@
         document.getElementById('brightness').addEventListener('input', (e) => {
             brightness = e.target.value; document.getElementById('bVal').innerText = brightness+'%'; triggerUpdate();
         });
+        document.getElementById('corneaBulge').addEventListener('input', (e) => {
+            corneaBulge = e.target.value; document.getElementById('cbVal').innerText = corneaBulge+'%'; triggerUpdate(true);
+        });
         document.getElementById('pupilFocus').addEventListener('input', (e) => {
-            pupilFocus = e.target.value; document.getElementById('pVal').innerText = pupilFocus+'%'; triggerUpdate();
+            pupilFocus = e.target.value; document.getElementById('pdVal').innerText = pupilFocus+'%'; triggerUpdate();
         });
 
         document.getElementById('imageInput').addEventListener('change', (e) => {
@@ -199,7 +225,7 @@
         function animate() {
             requestAnimationFrame(animate);
             if (eyeMesh) eyeMesh.rotation.y = Math.sin(Date.now() * 0.0008) * 0.03;
-            if (controls) controls.update();
+            controls.update();
             renderer.render(scene, camera);
         }
         init();
