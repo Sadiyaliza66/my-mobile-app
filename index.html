@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Human Eye Forensic Analyzer Pro</title>
+    <title>3D Eye Forensic Analyzer Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">
         { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
@@ -41,11 +41,11 @@
         </button>
 
         <div class="space-y-4">
-            <h2 class="text-xs font-bold text-neutral-500 uppercase tracking-widest border-b border-neutral-800 pb-2">Analysis Controls</h2>
+            <h2 class="text-xs font-bold text-neutral-500 uppercase tracking-widest border-b border-neutral-800 pb-2">Tissue Enhancement Controls</h2>
             
             <div>
                 <div class="flex justify-between text-[11px] text-cyan-400 mb-1 font-bold"><span>Clarity & Pattern Sharpness</span><span id="clVal">100%</span></div>
-                <input type="range" id="clarity" min="0" max="300" value="100" class="w-full appearance-none bg-transparent">
+                <input type="range" id="clarity" min="0" max="100" value="100" class="w-full appearance-none bg-transparent">
             </div>
 
             <div>
@@ -54,12 +54,12 @@
             </div>
 
             <div>
-                <div class="flex justify-between text-[11px] text-neutral-400 mb-1"><span>Cornea 3D Bulge (Intensity)</span><span id="cbVal">100%</span></div>
+                <div class="flex justify-between text-[11px] text-cyan-400 mb-1 font-bold"><span>Cornea 3D Bulge (Intensity)</span><span id="cbVal">100%</span></div>
                 <input type="range" id="corneaBulge" min="0" max="200" value="100" class="w-full appearance-none bg-transparent">
             </div>
 
             <div> 
-                <div class="flex justify-between text-[11px] text-cyan-400 mb-1 font-bold"><span>Pupil Definition (Deepness)</span><span id="pdVal">50%</span></div>
+                <div class="flex justify-between text-[11px] text-cyan-400 mb-1 font-bold"><span>Pupil Definition (Surgical Center)</span><span id="pdVal">50%</span></div>
                 <input type="range" id="pupilFocus" min="0" max="100" value="50" class="w-full appearance-none bg-transparent">
             </div>
 
@@ -94,7 +94,7 @@
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        let scene, camera, renderer, controls, eyeMesh, frontLight, angledDetailLight;
+        let scene, camera, renderer, controls, eyeMesh, frontLight, forensicDetailLight;
         let baseImage = null; 
         const filterCanvas = document.createElement('canvas');
         const ctx = filterCanvas.getContext('2d', { willReadFrequently: true });
@@ -118,20 +118,20 @@
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
             
-            // Bright Ambient to fill shadows, without causing black artifacts
-            scene.add(new THREE.AmbientLight(0xffffff, 2.5)); 
+            // FIX: Ambient light lowered to 0.8 to maximize the effect of Bump shadows
+            scene.add(new THREE.AmbientLight(0xffffff, 2.0));
             
-            // New Lighting Strategy for Hyper Realism
-            frontLight = new THREE.PointLight(0xffffff, 1.2);
+            // Front-centered light for general viewing (Low to prevent artifacts)
+            frontLight = new THREE.PointLight(0xffffff, 1.0);
             frontLight.position.set(0, 0, 5); 
             scene.add(frontLight);
 
-            // Soft directional light slightly from side for defining tissue textures
-            angledDetailLight = new THREE.DirectionalLight(0xffffff, 1.0);
-            angledDetailLight.position.set(-3, 3, 5);
-            angledDetailLight.target.position.set(0, 0, 0);
-            scene.add(angledDetailLight);
-            scene.add(angledDetailLight.target);
+            // Forensic Detail Light slightly from side for defining tissue textures
+            forensicDetailLight = new THREE.DirectionalLight(0xffffff, 0.6); // controlled dynamically
+            forensicDetailLight.position.set(-3, 3, 5);
+            forensicDetailLight.target.position.set(0, 0, 0);
+            scene.add(forensicDetailLight);
+            scene.add(forensicDetailLight.target);
 
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enablePan = false; controls.enableDamping = true;
@@ -170,27 +170,25 @@
             if (!baseImage) return;
             const w = filterCanvas.width; const h = filterCanvas.height;
             
-            // NEW: DUAL-STAGE SURGICAL CLARITY
-            // We multiply the global contrast with the clarity slider. 
-            // This makes the tissue details surgically defined.
+            // SURGICAL CLARITY (0 to 100%)
             let baseContrast = contrast;
-            let clarityScale = clarity / 100; // 0 to 3
-            let totalContrast = baseContrast * clarityScale; 
+            let clarityScale = clarity / 100; // 0 to 1
+            let finalContrast = baseContrast + (baseContrast * 0.5 * clarityScale); // subtle forensic sharpening
 
-            ctx.filter = `brightness(${brightness}%) contrast(${totalContrast}%) saturate(${saturation}%)`;
+            ctx.filter = `brightness(${brightness}%) contrast(${finalContrast}%) saturate(${saturation}%)`;
             ctx.drawImage(baseImage, 0, 0, w, h);
             
-            // NEW Pupil Definition - Sharp Black Central Focus, no binary glare dots
+            // NEW No-Dot Pupil Definition - Sharp Black Central Focus, no binary glare dots
             ctx.filter = 'none'; 
             const cx = w/2, cy = h/2, radius = Math.min(w, h)/2;
             const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
             
-            let deepness = pupilFocus / 100;
+            let surgicalSymmetry = pupilFocus / 100;
             // Central surgical black (0 to 0.1radius)
             gradient.addColorStop(0, '#000000');
             gradient.addColorStop(0.1, '#000000'); 
             // Surgical defined border (0.1radius to 0.15radius)
-            gradient.addColorStop(0.15, `rgba(0, 0, 0, 0.2)`);
+            gradient.addColorStop(0.15, `rgba(0, 0, 0, 0.4)`);
             gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
             
             ctx.fillStyle = gradient;
@@ -223,14 +221,14 @@
             pos.needsUpdate = true; 
         }
 
-        // NEW FIX: Updates 3D Bumps instantly
+        // NEW FIX: Updates 3D Bumps and reflections instantly
         function update3DMaterial() {
             if (!eyeMesh) return;
             // Clarity now controls the height of the 3D veins/threads
-            eyeMesh.material.bumpScale = (clarity / 100) * 0.1; // Iris pop intensity
+            // We use subtle surgical pop (max 0.1) instead of exaggerated depth.
+            eyeMesh.material.bumpScale = (clarity / 100) * 0.1; // Forensic Texture Pop
             
             // Highlights controls how glossy and wet the eye looks
-            // Roughness 0 = wet gloss mirror, Roughness 1 = matte
             eyeMesh.material.roughness = Math.max(0.01, 1.0 - (highlights / 100)); 
             eyeMesh.material.needsUpdate = true;
         }
