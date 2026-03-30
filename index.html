@@ -11,7 +11,7 @@
 </head>
 <body class="bg-black text-white flex flex-col h-screen overflow-hidden font-sans">
     
-    <header class="p-4 border-b border-neutral-800 bg-neutral-900 flex items-center gap-3">
+    <header class="p-4 border-b border-neutral-800 bg-neutral-900 flex items-center gap-3 z-10">
         <span class="text-blue-500 text-xl">👁️</span>
         <div>
             <h1 class="text-lg font-bold">Ultra-Real Human Eye</h1>
@@ -25,12 +25,14 @@
         </div>
     </div>
 
-    <div class="p-6 bg-neutral-900 rounded-t-3xl border-t border-neutral-800 flex-1 shadow-2xl z-10">
-        <p class="text-[11px] text-neutral-400 mb-4 uppercase text-center">Depth Map Preserved / Glarless Rendering</p>
-        <input type="file" id="imageInput" accept="image/*" class="hidden">
-        <button onclick="document.getElementById('imageInput').click()" class="w-full py-4 bg-gradient-to-r from-blue-700 to-blue-500 rounded-2xl font-bold shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
-            SCAN REAL EYE
-        </button>
+    <div class="p-6 bg-neutral-900 rounded-t-3xl border-t border-neutral-800 flex-1 shadow-2xl z-10 flex flex-col justify-between">
+        <div>
+            <p class="text-[11px] text-neutral-400 mb-4 uppercase tracking-widest text-center">Depth Map Preserved / Glareless Rendering</p>
+            <input type="file" id="imageInput" accept="image/*" class="hidden">
+            <button onclick="document.getElementById('imageInput').click()" class="w-full py-4 bg-gradient-to-r from-blue-700 to-blue-500 rounded-2xl font-bold shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
+                SCAN REAL EYE
+            </button>
+        </div>
         <p class="text-xs text-center mt-3 text-neutral-500">Notice the defined iris patterns and preserved lines.</p>
     </div>
 
@@ -95,8 +97,8 @@
                 }
                 geo.computeVertexNormals();
 
-                // Material designed for Glarless Realism
-                // High roughness and low metalness prevents artificial reflections.
+                // Material designed for Glareless Realism
+                // High roughness prevents artificial reflections.
                 const mat = new THREE.MeshStandardMaterial({ 
                     map: tex, 
                     roughness: 1.0, // Prevents reflections
