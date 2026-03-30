@@ -3,37 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Eye Forensic Viewer</title>
+    <title>3D Eye Forensic Analyzer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">
         { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
     </script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #ffffff; }
+        body { margin: 0; overflow: hidden; background-color: #f3f4f6; }
+        canvas { display: block; }
+        .glass-ui {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
     </style>
 </head>
-<body class="font-sans h-screen w-screen relative">
+<body class="font-sans h-screen w-screen relative bg-white">
     
     <div id="canvas-container" class="absolute inset-0 z-0"></div>
 
-    <div id="ui-container" class="absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none">
+    <div id="ui-layer" class="absolute inset-x-0 bottom-10 z-20 flex flex-col items-center gap-4 px-6 pointer-events-none">
         
-        <div id="loader" class="text-cyan-600 font-bold text-lg animate-pulse uppercase tracking-widest hidden bg-white/80 px-6 py-3 rounded-full">
-            Scanning Tissue Data... 👁️
-        </div>
+        <div class="glass-ui p-6 rounded-[2rem] shadow-2xl w-full max-w-sm pointer-events-auto text-center">
+            <h1 class="text-gray-800 font-bold text-lg mb-4 uppercase tracking-tighter flex items-center justify-center gap-2">
+                <span class="text-cyan-600 text-xl">👁️</span> Eye Forensic Pro
+            </h1>
 
-        <div id="uploadBox" class="pointer-events-auto text-center">
-            <h1 class="font-bold text-gray-800 uppercase tracking-tighter mb-4 text-2xl">AI Eye Analyzer</h1>
             <input type="file" id="imageInput" accept=".jpg, .jpeg, .png" class="hidden">
-            <button onclick="document.getElementById('imageInput').click()" class="px-8 py-4 bg-cyan-600 hover:bg-cyan-500 text-white rounded-full font-bold shadow-2xl shadow-cyan-500/50 active:scale-95 transition-all uppercase tracking-wider">
-                📂 Upload Iris Image
-            </button>
+            
+            <div class="flex flex-col gap-3">
+                <button onclick="document.getElementById('imageInput').click()" class="w-full py-4 bg-cyan-600 hover:bg-cyan-500 text-white rounded-2xl font-bold shadow-lg active:scale-95 transition-all uppercase text-sm">
+                    📂 Upload Iris Image
+                </button>
+
+                <button id="downloadBtn" style="display: none;" class="w-full py-4 bg-white border-2 border-green-500 text-green-600 rounded-2xl font-bold active:scale-95 transition-all uppercase text-sm">
+                    📸 Save 3D Scan
+                </button>
+            </div>
+            
+            <p id="statusMsg" class="text-[10px] text-gray-400 mt-4 uppercase tracking-widest">Waiting for data input...</p>
         </div>
-
-        <button id="downloadBtn" class="pointer-events-auto absolute bottom-10 px-6 py-3 bg-white border-2 border-green-500 text-green-600 hover:bg-green-500 hover:text-white rounded-full font-bold shadow-lg hidden active:scale-95 transition-all">
-            📸 Save 3D Image
-        </button>
-
     </div>
 
     <script type="module">
@@ -42,8 +51,7 @@
 
         let scene, camera, renderer, controls, eyeMesh;
         const container = document.getElementById('canvas-container');
-        const uploadBox = document.getElementById('uploadBox');
-        const loader = document.getElementById('loader');
+        const statusMsg = document.getElementById('statusMsg');
         const downloadBtn = document.getElementById('downloadBtn');
 
         const filterCanvas = document.createElement('canvas');
@@ -51,20 +59,18 @@
 
         function init() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xffffff); // Pure White Background
+            scene.background = new THREE.Color(0xffffff); // Clean White
             
             camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.z = 7;
             
-            // preserveDrawingBuffer is true so we can download the image later
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
             
-            // Bright Ambient Light
+            // Full Bright Lighting (No Shadows)
             scene.add(new THREE.AmbientLight(0xffffff, 2.5)); 
-            
             const frontLight = new THREE.PointLight(0xffffff, 1.0);
             frontLight.position.set(0, 0, 5); 
             scene.add(frontLight);
@@ -77,9 +83,7 @@
         }
 
         function processImageFile(file) {
-            uploadBox.classList.add('hidden');
-            loader.classList.remove('hidden');
-            loader.classList.add('flex');
+            statusMsg.innerText = "Enhancing Iris Patterns...";
             
             const reader = new FileReader();
             reader.onload = (event) => {
@@ -93,32 +97,28 @@
                     }
                     filterCanvas.width = w; filterCanvas.height = h;
                     
-                    // AUTO ENHANCEMENT (No sliders needed, doing it in code)
-                    // High contrast (150%) for pattern definition
+                    // AUTO ENHANCE (Canva Level Clarity)
                     ctx.filter = `brightness(100%) contrast(150%) saturate(100%)`;
                     ctx.drawImage(img, 0, 0, w, h);
                     
-                    // AUTO PUPIL FOCUS (Perfect black center)
-                    ctx.filter = 'none'; 
+                    // AUTO PUPIL (Perfect Deep Center)
                     const cx = w/2, cy = h/2, radius = Math.min(w, h)/2;
                     const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
                     gradient.addColorStop(0, '#000000');
                     gradient.addColorStop(0.1, '#000000'); 
-                    gradient.addColorStop(0.15, `rgba(0, 0, 0, 0.4)`);
-                    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    gradient.addColorStop(0.15, `rgba(0,0,0,0.4)`);
+                    gradient.addColorStop(1, 'rgba(0,0,0,0)');
                     ctx.fillStyle = gradient;
                     ctx.fillRect(0, 0, w, h);
 
-                    const finalTexture = new THREE.CanvasTexture(filterCanvas);
-                    finalTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-                    finalTexture.colorSpace = THREE.SRGBColorSpace;
-                    finalTexture.minFilter = THREE.LinearFilter;
+                    const tex = new THREE.CanvasTexture(filterCanvas);
+                    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+                    tex.colorSpace = THREE.SRGBColorSpace;
                     
-                    create3DMesh(finalTexture);
+                    create3DMesh(tex);
                     
-                    loader.classList.add('hidden');
-                    loader.classList.remove('flex');
-                    downloadBtn.classList.remove('hidden'); // Show download button
+                    statusMsg.innerText = "3D Scan Complete";
+                    downloadBtn.style.display = 'block';
                 };
                 img.src = event.target.result;
             };
@@ -127,24 +127,22 @@
 
         function create3DMesh(tex) {
             if (eyeMesh) scene.remove(eyeMesh);
-            
-            // Size 2.8 x 2.0 as requested
             const geo = new THREE.PlaneGeometry(2.8, 2.0, 256, 256);
             const pos = geo.attributes.position;
             
             for (let i = 0; i < pos.count; i++) {
                 const x = pos.getX(i), y = pos.getY(i);
-                const z = (0.7) * Math.exp(-(x*x + y*y) / 4.0);
+                // Real Cornea Bulge
+                const z = 0.7 * Math.exp(-(x*x + y*y) / 4.0);
                 pos.setZ(i, z);
             }
             geo.computeVertexNormals();
 
-            // Material with automatic slight bump and wet look
             const mat = new THREE.MeshStandardMaterial({ 
                 map: tex, 
                 bumpMap: tex, 
-                bumpScale: 0.1, 
-                roughness: 0.2, 
+                bumpScale: 0.1, // Surgical Texture Pop
+                roughness: 0.2, // Wet Look
                 side: THREE.DoubleSide 
             });
             eyeMesh = new THREE.Mesh(geo, mat);
@@ -155,13 +153,11 @@
             if (e.target.files[0]) processImageFile(e.target.files[0]);
         });
 
-        // Download Button Logic
         downloadBtn.addEventListener('click', () => {
             renderer.render(scene, camera);
-            const dataURL = renderer.domElement.toDataURL("image/jpeg", 1.0);
             const link = document.createElement('a');
-            link.download = '3D_Eye_Forensic_' + Date.now() + '.jpg';
-            link.href = dataURL;
+            link.download = 'Forensic_Eye_Scan.jpg';
+            link.href = renderer.domElement.toDataURL("image/jpeg", 1.0);
             link.click();
         });
 
@@ -173,14 +169,10 @@
 
         function animate() {
             requestAnimationFrame(animate);
-            if (eyeMesh) {
-                // Auto rotate slowly
-                eyeMesh.rotation.y = Math.sin(Date.now() * 0.0008) * 0.03;
-            }
+            if (eyeMesh) eyeMesh.rotation.y = Math.sin(Date.now() * 0.0008) * 0.03;
             controls.update();
             renderer.render(scene, camera);
         }
-        
         init();
     </script>
 </body>
