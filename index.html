@@ -26,8 +26,8 @@
     </header>
 
     <div id="canvas-container" class="relative w-full h-[50vh] bg-black">
-        <div id="loader" class="absolute inset-0 flex items-center justify-center bg-black z-20 text-cyan-400 text-sm animate-pulse">
-            Loading 3D Engine...
+        <div id="loader" class="absolute inset-0 flex items-center justify-center bg-black z-20 text-cyan-400 text-sm font-bold tracking-widest uppercase">
+            Waiting for Upload... 👁️
         </div>
     </div>
 
@@ -91,14 +91,13 @@
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enablePan = false; controls.enableDamping = true;
 
-            document.getElementById('loader').style.display = 'none';
-            loadDefaultImage();
+            // NO DEFAULT LANDSCAPE IMAGE ANYMORE!
             animate();
         }
 
         function processImageFile(file) {
             document.getElementById('loader').style.display = 'flex';
-            document.getElementById('loader').innerText = "Processing Image...";
+            document.getElementById('loader').innerText = "Processing Details...";
             
             const reader = new FileReader();
             reader.onload = (event) => {
@@ -113,6 +112,12 @@
                     filterCanvas.width = w; filterCanvas.height = h;
                     baseImage = img;
                     
+                    // BUG FIX: Completely destroy old texture memory to prevent overlap!
+                    if (filteredTexture) {
+                        filteredTexture.dispose();
+                        filteredTexture = null;
+                    }
+                    
                     document.getElementById('loader').style.display = 'none';
                     applyFilters(); 
                 };
@@ -124,6 +129,9 @@
         function applyFilters() {
             if (!baseImage) return;
             const w = filterCanvas.width; const h = filterCanvas.height;
+            
+            // Clear canvas before drawing
+            ctx.clearRect(0, 0, w, h);
             
             ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
             ctx.drawImage(baseImage, 0, 0, w, h);
@@ -139,6 +147,7 @@
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, w, h);
 
+            // Recreate texture if it was destroyed or doesn't exist
             if (!filteredTexture) {
                 filteredTexture = new THREE.CanvasTexture(filterCanvas);
                 filteredTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -146,7 +155,7 @@
                 filteredTexture.minFilter = THREE.LinearFilter;
                 create3DMesh(filteredTexture);
             } else {
-                filteredTexture.needsUpdate = true; 
+                filteredTexture.needsUpdate = true; // For real-time slider updates
             }
         }
 
@@ -162,17 +171,6 @@
             const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 1.0, side: THREE.DoubleSide });
             eyeMesh = new THREE.Mesh(geo, mat);
             scene.add(eyeMesh);
-        }
-
-        function loadDefaultImage() {
-            const img = new Image();
-            img.crossOrigin = "Anonymous";
-            img.onload = () => {
-                filterCanvas.width = 1024; filterCanvas.height = 1024;
-                baseImage = img;
-                applyFilters();
-            };
-            img.src = 'https://images.unsplash.com/photo-1542224566-6e85f2e6772f?q=80&w=1024';
         }
 
         const triggerUpdate = () => {
@@ -201,7 +199,7 @@
         function animate() {
             requestAnimationFrame(animate);
             if (eyeMesh) eyeMesh.rotation.y = Math.sin(Date.now() * 0.0008) * 0.03;
-            controls.update();
+            if (controls) controls.update();
             renderer.render(scene, camera);
         }
         init();
